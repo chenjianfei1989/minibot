@@ -1,3 +1,5 @@
+"""验证工具权限决策、人工审批、模型审核及审批结果的提交。"""
+
 import asyncio
 import json
 from pathlib import Path

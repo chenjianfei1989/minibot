@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 同步 WebUI 构建产物到服务端，并清理页面不再引用的旧资源。
 
 set -euo pipefail
 

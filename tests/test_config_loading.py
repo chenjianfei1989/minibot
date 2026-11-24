@@ -1,3 +1,5 @@
+"""验证配置模板初始化、环境变量解析和各配置项的读取规则。"""
+
 from pathlib import Path
 import builtins
 

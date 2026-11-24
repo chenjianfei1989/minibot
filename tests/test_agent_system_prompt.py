@@ -1,3 +1,5 @@
+"""验证 Agent 系统提示词如何组合运行规则和各项能力说明。"""
+
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace

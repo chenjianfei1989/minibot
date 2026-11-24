@@ -1,3 +1,5 @@
+"""验证团队成员、任务、消息和锁的存储与更新。"""
+
 import pytest
 
 from src.minibot.teams.store import TeamStore

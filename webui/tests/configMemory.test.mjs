@@ -1,3 +1,5 @@
+// 验证记忆配置表单如何生成服务端更新数据。
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

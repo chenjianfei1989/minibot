@@ -1,3 +1,5 @@
+// 验证 WebUI 对工具审批事件字段的解析。
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

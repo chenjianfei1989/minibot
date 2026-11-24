@@ -1,3 +1,5 @@
+"""用真实 Docker 容器验证 Bash 执行、工作区隔离和容器清理。"""
+
 import asyncio
 import json
 import os

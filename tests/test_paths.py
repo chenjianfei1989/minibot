@@ -1,3 +1,5 @@
+"""验证如何从环境变量和当前目录解析应用主目录及项目根目录。"""
+
 from pathlib import Path
 
 from src.minibot.utils.path import resolve_app_home, resolve_project_root

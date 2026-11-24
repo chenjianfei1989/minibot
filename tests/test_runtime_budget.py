@@ -1,3 +1,5 @@
+"""验证模型回合、工具调用、token 和时间预算，以及中断后的状态处理。"""
+
 import asyncio
 import json
 from types import SimpleNamespace

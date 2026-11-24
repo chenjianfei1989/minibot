@@ -1,3 +1,5 @@
+"""验证模型流式分片的处理、工具参数合并、事件发布和回退。"""
+
 from types import SimpleNamespace
 
 import asyncio

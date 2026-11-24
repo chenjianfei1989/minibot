@@ -1,3 +1,5 @@
+"""验证终端渲染会跳过空的工具输出。"""
+
 from src.minibot.utils import output
 
 

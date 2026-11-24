@@ -1,3 +1,5 @@
+"""管理本地和 Docker 命令的启动、输出采集、超时和清理。"""
+
 import asyncio
 import csv
 from contextlib import AsyncExitStack, asynccontextmanager, suppress

@@ -1,3 +1,5 @@
+"""验证记忆后端、数据库地址和活跃命名空间的配置解析。"""
+
 from src.minibot.config import load_config
 
 

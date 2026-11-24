@@ -1,3 +1,5 @@
+"""验证外部平台连接配置、Bot 绑定和飞书消息路由。"""
+
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace

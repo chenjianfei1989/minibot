@@ -1,3 +1,5 @@
+"""验证团队成员执行、消息通信、文件锁和结束后的清理。"""
+
 import asyncio
 
 import pytest

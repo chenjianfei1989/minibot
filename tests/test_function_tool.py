@@ -1,3 +1,5 @@
+"""验证 Python 函数的工具包装、参数 Schema，以及通过 SDK 执行和持久化的流程。"""
+
 import asyncio
 import json
 from types import SimpleNamespace

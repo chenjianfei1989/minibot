@@ -1,3 +1,5 @@
+"""验证服务端如何选择 WebUI 静态资源以及缺少构建产物时的提示。"""
+
 from pathlib import Path
 
 import pytest

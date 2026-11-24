@@ -1,3 +1,5 @@
+"""验证 CLI 技能命令如何列出技能并保存启用或禁用状态。"""
+
 from pathlib import Path
 
 import pytest

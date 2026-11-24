@@ -1,3 +1,5 @@
+"""验证 Agent 的模型请求如何处理中断信号和残留信号。"""
+
 from types import SimpleNamespace
 
 import asyncio

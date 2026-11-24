@@ -1,3 +1,5 @@
+"""验证模型评估脚本如何执行试验、检查产物并汇总指标。"""
+
 import json
 from pathlib import Path
 

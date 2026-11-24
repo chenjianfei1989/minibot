@@ -1,3 +1,5 @@
+"""验证配置写回，包括子 Agent 设置和 MCP 服务状态。"""
+
 import yaml
 from pathlib import Path
 from src.minibot.config.writer import (

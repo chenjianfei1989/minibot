@@ -1,3 +1,5 @@
+"""验证持久化子运行交付文件的路径校验、读取复用和显式写入。"""
+
 from dataclasses import replace
 from hashlib import sha256
 import os

@@ -1,3 +1,5 @@
+"""验证模型工具参数的 JSON 解析及格式错误恢复。"""
+
 from src.minibot.core.tool_args import parse_tool_arguments
 
 

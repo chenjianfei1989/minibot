@@ -1,3 +1,5 @@
+// 验证结构化记忆图谱的节点布局。
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

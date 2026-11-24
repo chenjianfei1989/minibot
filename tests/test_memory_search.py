@@ -1,3 +1,5 @@
+"""验证结构化记忆的查询匹配和结果排序。"""
+
 from src.minibot.config.schema import MemoryConfig
 from src.minibot.memory.manager import MemoryManager
 

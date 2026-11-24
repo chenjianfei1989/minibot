@@ -1,3 +1,5 @@
+"""验证通过 Streamable HTTP 连接 MCP 服务、发现和调用工具及关闭会话。"""
+
 import asyncio
 import builtins
 import json

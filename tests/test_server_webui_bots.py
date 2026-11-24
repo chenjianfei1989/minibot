@@ -1,3 +1,5 @@
+"""验证 WebUI 的 Bot 配置、会话管理、聊天流和交互恢复接口。"""
+
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace

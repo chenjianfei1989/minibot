@@ -1,3 +1,5 @@
+"""检查聊天界面源码，确保桌面侧栏切换入口没有重复渲染。"""
+
 from pathlib import Path
 
 

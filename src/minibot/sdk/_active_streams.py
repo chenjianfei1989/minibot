@@ -1,3 +1,5 @@
+"""记录活跃流的所有者，防止同一会话同时启动多个生成任务。"""
+
 import asyncio
 from contextlib import contextmanager
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""验证内置技能的创建、校验和安装脚本。"""
+
 import importlib.util
 import json
 from pathlib import Path

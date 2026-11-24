@@ -1,3 +1,5 @@
+// 验证聊天界面如何根据工具事件构造展示状态。
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

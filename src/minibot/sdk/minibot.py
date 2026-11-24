@@ -555,7 +555,10 @@ class Minibot:
         return self.agent.run_store
 
     def list_runs(self, *, incomplete_only: bool = False) -> list[RunState]:
-        """查找当前工作区和活跃会话中的持久化运行。"""
+        """列出当前会话在此工作区保存的 Agent 执行记录。
+
+        记录按创建时间从新到旧排列。传入 incomplete_only=True 时，只返回尚未结束的运行。
+        """
         return self._durable_store().list_runs(self.session_id, incomplete_only=incomplete_only)
 
     def list_run_steps(self, run_id: str) -> list[StepState]:

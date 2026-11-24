@@ -1,3 +1,5 @@
+"""验证 WebUI 服务端的记忆管理和查询接口。"""
+
 from pathlib import Path
 
 import pytest

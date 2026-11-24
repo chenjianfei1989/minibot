@@ -1,3 +1,5 @@
+"""验证本地 Bash 命令的输出、退出状态、超时和子进程清理。"""
+
 import asyncio
 import json
 import os

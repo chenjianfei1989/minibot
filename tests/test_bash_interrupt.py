@@ -1,3 +1,5 @@
+"""验证 Agent 和 SDK 取消 Bash 工具时会等待子进程清理。"""
+
 import asyncio
 import json
 import os

@@ -1,3 +1,5 @@
+"""验证记忆仓库中的节点增删改查、版本记录和默认数据库初始化。"""
+
 from src.minibot.config.schema import MemoryConfig
 from src.minibot.memory.repository import MemoryRepository
 

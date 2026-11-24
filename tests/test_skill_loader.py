@@ -1,3 +1,5 @@
+"""验证技能加载、同名覆盖、禁用过滤和 UTF-8 读取。"""
+
 from pathlib import Path
 
 import pytest

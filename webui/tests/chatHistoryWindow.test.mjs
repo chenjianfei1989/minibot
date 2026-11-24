@@ -1,3 +1,5 @@
+// 验证聊天历史窗口的隐藏轮次统计和展示范围。
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

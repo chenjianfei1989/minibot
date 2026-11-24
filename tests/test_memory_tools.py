@@ -1,3 +1,5 @@
+"""验证 Agent 可调用的记忆读取、编辑、搜索及触发器工具。"""
+
 import pytest
 from src.minibot.agent import Agent
 from src.minibot.config.schema import (

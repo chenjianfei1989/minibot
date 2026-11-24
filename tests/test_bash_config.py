@@ -1,3 +1,5 @@
+"""验证 Bash 后端的默认配置以及超时和资源限制的校验。"""
+
 import pytest
 
 from src.minibot.config import BashConfig, Config, ToolsConfig

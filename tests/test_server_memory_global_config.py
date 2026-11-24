@@ -1,3 +1,5 @@
+"""验证服务端全局记忆配置的读取、展示和写回。"""
+
 from pathlib import Path
 
 import pytest

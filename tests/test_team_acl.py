@@ -1,3 +1,5 @@
+"""验证团队负责人和队友的权限边界及可用工具。"""
+
 import pytest
 
 from src.minibot.agent import Agent

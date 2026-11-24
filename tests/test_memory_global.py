@@ -1,3 +1,5 @@
+"""验证全局记忆路径及旧项目记忆的迁移。"""
+
 from pathlib import Path
 
 from src.minibot.config.schema import MemoryConfig

@@ -1,3 +1,5 @@
+"""验证记忆数据库的初始化、连接配置和会话工厂。"""
+
 import pytest
 from sqlmodel import SQLModel
 

@@ -1,3 +1,5 @@
+"""检查记忆页面源码中的初始加载顺序和节点编辑调用。"""
+
 from pathlib import Path
 
 

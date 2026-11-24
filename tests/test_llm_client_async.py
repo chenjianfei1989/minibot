@@ -1,3 +1,5 @@
+"""验证异步模型调用、流式参数、推理选项和兼容回退。"""
+
 from types import SimpleNamespace
 
 import pytest

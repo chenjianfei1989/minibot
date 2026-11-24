@@ -1,3 +1,5 @@
+"""验证索引、术语表等系统记忆视图的内容。"""
+
 from src.minibot.config.schema import MemoryConfig
 from src.minibot.memory.manager import MemoryManager
 from src.minibot.memory.repository import MemoryRepository

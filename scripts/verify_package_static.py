@@ -1,3 +1,5 @@
+"""检查 wheel 和源码归档是否包含入口页面引用的 WebUI 静态资源。"""
+
 from __future__ import annotations
 
 import pathlib

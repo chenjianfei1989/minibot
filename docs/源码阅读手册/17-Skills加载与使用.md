@@ -2,9 +2,19 @@
 
 理解技能文件的信息何时进入提示词，以及怎样手动验证加载结果。
 
-## 源码导读
+## 知道技能存在与加载技能正文
 
-沿 SkillLoader 的目录扫描和元数据解析看 name、description、正文以及重名处理。找出 Agent 构建提示词时使用的描述，以及 Skill 工具按名称返回的全文和资源列表。
+假设你写了一个「整理发布说明」技能，里面既有概要也有步骤。要理解模型何时能遵循它，先从 `SkillLoader` 看如何扫描目录、提取名称和描述，再找 `Agent._build_system_prompt()` 怎样说明可用技能。具体技能被调用时，`SkillTool` 才按名称读取内容并作为结果返回。给描述写清楚适用情形，才能让模型在恰当的任务中发现它。
+
+## 跟踪重名和禁用
+
+当项目技能与内置技能同名时，在测试里观察最终显示的描述和来源。查看加载器处理多个目录的顺序，结合实际传给 SDK 的 `skills_dir` 判断谁覆盖谁。禁用名单变更后，Agent 会刷新技能加载器和依赖它的提示词或执行组件。受限工作区的技能来源也受当前策略约束。
+
+练习时可将同名技能放在两个临时目录，分别写不同描述。使用 `/skills list` 或受控加载测试先验证选中项，再观察实际工具返回的内容。持续使用同名技能时，要把保存位置和启用状态记入笔记。
+
+**思考与答案**　系统提示词列出一个技能，是否等于模型已读完它的全部步骤？列表可以只有名称和描述，正文由具体的加载和调用链提供。
+
+## 源码索引
 
 [skills/loader.py](../../src/minibot/skills/loader.py) · [tools/meta/skill.py](../../src/minibot/tools/meta/skill.py) · [builtin_skills/skill-creator/SKILL.md](../../src/minibot/builtin_skills/skill-creator/SKILL.md) · [builtin_skills/skill-installer/SKILL.md](../../src/minibot/builtin_skills/skill-installer/SKILL.md)
 

@@ -2,9 +2,25 @@
 
 区分一次用户轮次、一次模型响应和一次工具执行。
 
-## 源码导读
+## 一轮用户请求横跨多少次模型调用
 
-从 run_loop() 找到 _run_segment() 与真正的 while 循环 _run_loop()。读 finish_reason 的提取与回退，找到 is_tool_batch。工具批次走 _dispatch_tool_batch() 并继续下一次模型调用，其他结束原因进入 return messages。预算和中断走异常处理。
+把「读一下 README 并告诉我如何启动」交给 Agent。第一次模型请求可能只得到工具调用，它告诉 MiniBot 该执行什么。MiniBot 完成读取并把结果追加回消息，第二次模型请求才有机会根据文件内容回答。如果模型接着要求另读一个配置文件，循环还会继续。整个往返属于同一轮用户请求。
+
+```text
+用户输入 → 模型响应
+             ├─ finish_reason 为 tool_calls → 执行工具 → 回填消息 → 再请求模型
+             └─ 其他结束原因 → 保存助手消息 → 返回消息列表
+```
+
+## 外层负责运行，内层负责迭代
+
+`run_loop()` 是外层入口，负责正常运行和持久化运行的衔接。`_run_segment()` 管理一次执行片段的预算、权限等上下文。`_run_loop()` 才有真正的 `while True`。沿着响应提取代码找到 `is_tool_batch`，便能把上图的两个分支对到实现。响应缺少结束标记时有回退值，所以读分支时要关注 MiniBot 实际使用的归一化 `finish_reason`。
+
+`assistant_end` 是一次助手响应结束的事件。在工具分支，发出它后，还会执行工具并回到循环顶部。整轮的返回位置要看 `return messages` 或异常边界。把断点放在这三处，能分辨「模型发完这一条」「Agent 继续执行工具」「整轮已交还调用方」。
+
+**思考与答案**　怎样知道终端只输出一次最终正文的过程中是否调用过工具？检查结构化工具事件，或在消息历史找助手工具请求和对应的 `role="tool"` 记录。
+
+## 源码索引
 
 [agent.py](../../src/minibot/agent.py) · [core/run_store.py](../../src/minibot/core/run_store.py)
 

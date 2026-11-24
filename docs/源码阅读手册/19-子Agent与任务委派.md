@@ -2,13 +2,21 @@
 
 理解主 Agent 怎样把一个有明确范围的任务交给子 Agent。
 
-## 源码导读
+## 把一个可界定的子问题交给子 Agent
 
-从 TaskTool 查 agent_type 的解析与注册表选择，再进入 SubagentExecutor。跟踪子 Agent 的提示词、工具允许列表、技能、预算和最终结果，注意哪些资源与父 Agent 共享。
+主 Agent 处理仓库问题时，可以把「只读源码，找出会话保存入口」委派给子 Agent。跟踪 `TaskTool` 提供的字段以及 `AgentRegistry` 如何选定类型，随后进入 `SubagentExecutor`。类型配置可以限制能用哪些工具、是否能加载技能以及使用哪些提示词。这些约束帮助子任务遵守自己的边界。
+
+## 普通委派和持久化沙箱委派
+
+普通委派沿子执行器运行并返回结果。持久化路径则可用日志关联父步骤和子运行，每个子运行使用独立的 Docker 工作区。`TaskBatch` 适用于多个相互独立的任务，子运行共享父运行的预算，交付通过凭据明确记录。阅读这条链时，把「返回文本」「导出文件」「把文件应用到父工作区」当作三个不同的操作。
+
+先对照技能测试修改子 Agent 的工具配置，观察实际工具清单，再读一个子运行恢复场景，查看父步骤处于等待时如何定位原子运行。实际 Docker 验证需要本地守护进程和已准备好的镜像。
+
+**思考与答案**　两项子任务之间有数据依赖，适合直接一起放到 `TaskBatch` 里吗？这个批次面向独立任务。需要使用前一项结果时，先等其交付并检查，再委派后续工作。
+
+## 源码索引
 
 [tools/meta/task.py](../../src/minibot/tools/meta/task.py) · [subagents/registry.py](../../src/minibot/subagents/registry.py) · [subagents/executor.py](../../src/minibot/subagents/executor.py) · [agent.py](../../src/minibot/agent.py)
-
-启用持久化执行且具备可信本地父工作区时，还要读 `subagents/durable.py`。比较 `Task` 和 `TaskBatch` 的调度方式，确认每个子运行有独立 Docker 工作区，并通过 `deliverables` 与 `ReadChildArtifact` 交付文件。
 
 [持久化沙箱子 Agent 指南](../持久化沙箱子Agent.md) · [持久化子 Agent 实现](../../src/minibot/subagents/durable.py)
 

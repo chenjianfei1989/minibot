@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from .config import load_config
 from .agent import Agent, UserInterruptedError
+from .core.runtime_budget import RuntimeBudgetExceeded
 from .session.manager import SessionManager
 from .utils.cli_logging import cli_file_logging, log_cli_event, logger
 from .utils.esc_interrupt import EscInterruptMonitor
@@ -134,6 +135,13 @@ def _render_history(history: list[dict]) -> None:
             print_assistant(content)
     print_system("── end of history ──")
     print()
+
+
+def _report_budget_stop(exc: RuntimeBudgetExceeded) -> None:
+    """显示预算停止原因并记录警告。"""
+    message = f"本轮已达到运行预算上限（{exc.limit}）。"
+    logger.warning(message)
+    print_system(message)
 
 
 async def repl(agent: Agent) -> None:
@@ -388,6 +396,8 @@ async def repl(agent: Agent) -> None:
                             print_system("Usage: /run [list|resume ID|abandon ID]")
                     except UserInterruptedError:
                         print_system("Interrupted (ESC).")
+                    except RuntimeBudgetExceeded as exc:
+                        _report_budget_stop(exc)
                     except Exception as exc:
                         logger.exception("会话 %s 的运行命令执行失败", current_session_id)
                         print_system(str(exc))
@@ -422,6 +432,8 @@ async def repl(agent: Agent) -> None:
                     await _generate(seed_messages=seed, publish_messages=_publish_durable)
                 except UserInterruptedError:
                     print_system("Interrupted (ESC).")
+                except RuntimeBudgetExceeded as exc:
+                    _report_budget_stop(exc)
                 except Exception as exc:
                     logger.exception("会话 %s 的对话执行失败", current_session_id)
                     print_system(str(exc))
@@ -440,6 +452,8 @@ async def repl(agent: Agent) -> None:
             except UserInterruptedError:
                 print_system("Interrupted (ESC).")
                 history.append({"role": "assistant", "content": "[Generation interrupted by user via ESC]"})
+            except RuntimeBudgetExceeded as exc:
+                _report_budget_stop(exc)
             except Exception as exc:
                 logger.exception("会话 %s 的对话执行失败", current_session_id)
                 print_system(f"Error: {exc}")

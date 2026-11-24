@@ -142,15 +142,20 @@ class MemoryManager:
         """返回当前实例生成的迁移提示。"""
         return self._migration_notice
 
+    def _resolve_active_namespace(self) -> str | None:
+        """返回当前命名空间，或在首次访问时选择已有的第一个。"""
+        if not self.config.active_namespace:
+            namespaces = self.repository.list_namespaces()
+            if namespaces:
+                self.config.active_namespace = namespaces[0].slug
+        return self.config.active_namespace or None
+
     def _active_namespace(self) -> str:
         """确定当前读写应使用的记忆命名空间。"""
-        if self.config.active_namespace:
-            return self.config.active_namespace
-        namespaces = self.repository.list_namespaces()
-        if not namespaces:
+        namespace = self._resolve_active_namespace()
+        if namespace is None:
             raise ValueError("No memory namespace is active.")
-        self.config.active_namespace = namespaces[0].slug
-        return namespaces[0].slug
+        return namespace
 
     @staticmethod
     def _slugify(value: str) -> str:
@@ -279,9 +284,12 @@ class MemoryManager:
 
     def read(self, uri: str) -> str:
         """按 URI 读取普通记忆节点或系统视图。"""
-        namespace_slug = self._active_namespace()
         if uri == "system://boot":
-            return self._read_boot(namespace_slug)
+            namespace = self._resolve_active_namespace()
+            if namespace is None:
+                return "# system://boot\nNo memory namespace is active. Continue without structured memory."
+            return self._read_boot(namespace)
+        namespace_slug = self._active_namespace()
         if uri == "system://index":
             return self._read_index(namespace_slug)
         if uri == "system://glossary":

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import math
+import os
 from typing import Any
 
 from ..base import ResultTool
@@ -31,6 +32,11 @@ class BashTool(ResultTool):
         self.timeout = timeout
         self.config = config or BashConfig()
         self._backend = backend if backend is not None else LocalBackend(workdir, bash=self.config)
+        if os.name == "nt" and self.config.backend == "local" and isinstance(self._backend, LocalBackend):
+            self.description = (
+                "Run a command in Windows CMD using CMD syntax. "
+                "Use list_dir or read_file for directory and file inspection."
+            )
 
     @property
     def input_schema(self) -> dict[str, Any]:

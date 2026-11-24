@@ -7,6 +7,7 @@ import pytest
 from src.minibot import main
 from src.minibot.agent import Agent
 from src.minibot.config.schema import Config, LLMConfig, SessionConfig
+from src.minibot.core.runtime_budget import RuntimeBudgetExceeded
 from src.minibot.utils.cli_logging import cli_file_logging, log_cli_event, logger
 
 
@@ -21,7 +22,7 @@ def test_cli_persists_each_completed_reply_and_exception(
         llm=LLMConfig(api_key=api_key, stream_enabled=stream_enabled),
         session=SessionConfig(enabled=False),
     )
-    prompts = iter(["请求一", "请求二", "故障请求", "exit"])
+    prompts = iter(["请求一", "请求二", "预算请求", "故障请求", "exit"])
 
     class FakeModel:
         model = "test-model"
@@ -30,6 +31,8 @@ def test_cli_persists_each_completed_reply_and_exception(
         def reply(messages):
             """构造中文回复，或用可识别的异常模拟请求失败。"""
             prompt = messages[-1]["content"]
+            if prompt == "预算请求":
+                raise RuntimeBudgetExceeded("max_input_tokens")
             if prompt == "故障请求":
                 raise RuntimeError(f"示例故障 {api_key}")
             return f"完成{prompt[-1]} 🚀"
@@ -76,7 +79,9 @@ def test_cli_persists_each_completed_reply_and_exception(
     for reply in ("完成一 🚀", "完成二 🚀"):
         assert reply in output
         assert contents.count(reply) == 1
-    assert "Traceback (most recent call last)" in contents
+    assert "本轮已达到运行预算上限（max_input_tokens）。" in output
+    assert "WARNING 本轮已达到运行预算上限（max_input_tokens）。" in contents
+    assert contents.count("Traceback (most recent call last)") == 1
     assert "RuntimeError: 示例故障 [已隐藏]" in contents
     assert api_key not in contents
 

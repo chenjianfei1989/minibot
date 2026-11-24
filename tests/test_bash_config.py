@@ -1,11 +1,18 @@
 """验证 Bash 后端的默认配置以及超时和资源限制的校验。"""
 
+import os
+
 import pytest
 
 from src.minibot.config import BashConfig, Config, ToolsConfig
 from src.minibot.config.settings import _parse_tools_config, _DEFAULT_CONFIG_TEMPLATE
 from src.minibot.tools.builtin.bash import BashTool
 import yaml
+
+
+def test_shell_description_matches_local_and_docker_backends(tmp_path):
+    assert ("Windows CMD" in BashTool(tmp_path).description) == (os.name == "nt")
+    assert "Windows CMD" not in BashTool(tmp_path, config=BashConfig(backend="docker")).description
 
 
 def test_defaults_preserve_local_and_templates_agree():

@@ -39,6 +39,17 @@ def _seed_story(manager: MemoryManager) -> None:
     )
 
 
+def test_empty_repository_returns_boot_guidance(tmp_path):
+    manager = _make_manager(tmp_path)
+    manager.config.active_namespace = None
+
+    assert "No memory namespace is active." in manager.read("system://boot")
+    assert manager.list_namespaces() == []
+
+    manager.create_namespace("ember-falls", "Ember Falls")
+    assert "ember-falls" in manager.read("system://boot")
+
+
 def test_system_boot_returns_namespace_core_root_and_recent_nodes(tmp_path):
     manager = _make_manager(tmp_path)
     _seed_story(manager)

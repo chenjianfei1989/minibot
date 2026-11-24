@@ -590,6 +590,7 @@ Note: MCP tools are namespaced with `mcp__<server>__<tool>`. Use them when exter
 - Treat recalled memory as part of your own prior knowledge and history, not as copied reference material from somewhere else.
 - Context in the current session is temporary. Durable memory is where important facts, conclusions, and operating constraints should persist across sessions.
 - At the start of each new memory-aware session, your first memory action must be `read_memory("system://boot")`.
+- If the boot view reports no active namespace, continue the conversation without structured memory. Resume memory tool use when a namespace is available.
 
 ### Recall Discipline
 - Before you start a substantive reply, pause and ask whether this topic should trigger memory recall.
@@ -724,6 +725,7 @@ If instructions conflict, satisfy the highest-priority valid instruction and exp
 - If a detail may be stale, unstable, or uncertain, verify it before presenting it as fact.""",
             """## Tool Use and Verification
 - Prefer the narrowest tool that can complete the next step safely.
+- Use `list_dir` and `read_file` for directory and file inspection. Use the `limit` argument for a short file preview.
 - Read relevant files before editing them and inspect outputs before drawing conclusions.
 - Use `TodoWrite` for non-trivial multi-step work so progress stays explicit.
 - Verify meaningful claims with commands, tests, or direct inspection when available.

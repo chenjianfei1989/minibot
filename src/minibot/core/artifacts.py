@@ -1,4 +1,4 @@
-"""Session-scoped storage for complete text tool results."""
+"""按会话保存完整的文本工具结果。"""
 
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ MAX_QUERY_CHARS = 256
 
 
 class ArtifactError(RuntimeError):
-    """An artifact operation failed without exposing a storage path."""
+    """产物操作失败，错误信息不暴露存储路径。"""
 
 
 class InvalidArtifactRequest(ArtifactError):
-    """A retrieval request has invalid arguments."""
+    """检索请求包含无效参数。"""
 
 
 @dataclass(frozen=True)
@@ -57,16 +57,18 @@ class ArtifactMatch:
 
 
 def _private(info: os.stat_result) -> bool:
+    """检查文件或目录在当前平台上的权限是否符合私有存储要求。"""
     return os.name != "posix" or (info.st_uid == os.getuid() and not info.st_mode & 0o077)
 
 
 class ArtifactStore:
-    """Publish one bounded record per ID beneath an application-owned directory."""
+    """在应用管理的目录内，为每个 ID 发布一份大小受限的记录。"""
 
     def __init__(
         self, app_home: Path, workdir: Path, sessions_dir: Path, session_id: str, max_bytes: int,
         *, workspace_id: str | None = None,
     ) -> None:
+        """根据应用主目录建立产物存储，并记录单个产物的大小上限。"""
         self.root = app_home.resolve() / "artifacts"
         identity = b"\0".join([
             os.fsencode(workdir.resolve()), os.fsencode(sessions_dir.resolve()), session_id.encode("utf-8"),
@@ -78,6 +80,7 @@ class ArtifactStore:
         self.max_bytes = max_bytes
 
     def _check_directories(self, *, create: bool = False) -> None:
+        """检查产物根目录和会话目录是否满足存储要求。"""
         for path in (self.root, self.directory):
             if create:
                 path.mkdir(mode=0o700, parents=path == self.root, exist_ok=True)
@@ -86,13 +89,14 @@ class ArtifactStore:
                 raise ArtifactError("Artifact storage is not private.")
 
     def _keyed_identifier(self, content: bytes, run_id: str, tool_name: str, key: str) -> bytes:
+        """由键和内容计算可重复使用的产物标识。"""
         scope = json.dumps([self.directory.name, run_id, tool_name, key], ensure_ascii=True)
         return sha256(scope.encode("ascii") + b"\0" + content).digest()[:16]
 
     def save(
         self, text: str, run_id: str, tool_name: str, *, key: str | None = None,
     ) -> ArtifactMetadata:
-        """Save text, optionally reusing the immutable record for a key and content."""
+        """保存文本。提供键和相同内容时，可复用对应的不可变记录。"""
         if len(text) > self.max_bytes:
             raise ArtifactError(f"Output exceeds the {self.max_bytes}-byte artifact limit.")
         try:
@@ -144,6 +148,7 @@ class ArtifactStore:
 
     @staticmethod
     def _open_record(path: str, flags: int) -> int:
+        """打开指定 ID 的产物记录并检查其文件状态。"""
         info = os.lstat(path)
         if not stat.S_ISREG(info.st_mode) or not _private(info):
             raise ArtifactError("Artifact unavailable.")
@@ -159,6 +164,7 @@ class ArtifactStore:
 
     @staticmethod
     def _metadata(file: BinaryIO, artifact_id: str) -> ArtifactMetadata:
+        """从产物记录提取大小、作用域及来源等元数据。"""
         header = file.readline(_HEADER_LIMIT + 1)
         if len(header) > _HEADER_LIMIT or not header.endswith(b"\n"):
             raise ArtifactError("Invalid artifact record.")
@@ -172,6 +178,7 @@ class ArtifactStore:
         return metadata
 
     def _load(self, artifact_id: str, *, include_content: bool) -> tuple[ArtifactMetadata, str]:
+        """读取并解析指定的产物记录。"""
         if not isinstance(artifact_id, str) or _ID.fullmatch(artifact_id) is None:
             raise InvalidArtifactRequest("Invalid artifact ID.")
         try:
@@ -195,6 +202,7 @@ class ArtifactStore:
             raise ArtifactError("Invalid or unavailable artifact record.") from exc
 
     def read(self, artifact_id: str, offset: int, limit: int) -> tuple[ArtifactMetadata, str]:
+        """读取产物正文的指定字符范围，返回切片和元数据。"""
         if type(offset) is not int or offset < 0:
             raise InvalidArtifactRequest("Offset must be a nonnegative integer.")
         if type(limit) is not int or not 1 <= limit <= MAX_READ_CHARS:
@@ -205,7 +213,7 @@ class ArtifactStore:
         return metadata, text[offset:offset + limit]
 
     def read_all(self, artifact_id: str, *, key: str | None = None) -> tuple[ArtifactMetadata, str]:
-        """Read a bounded record and verify its key when supplied."""
+        """读取大小受限的记录，提供键时同时进行校验。"""
         metadata, content = self._load(artifact_id, include_content=True)
         if key is not None:
             identifier = self._keyed_identifier(content.encode("utf-8"), metadata.run_id, metadata.tool_name, key)
@@ -214,6 +222,7 @@ class ArtifactStore:
         return metadata, content
 
     def search(self, artifact_id: str, query: str) -> tuple[ArtifactMetadata, list[ArtifactMatch]]:
+        """按字面文本查询产物，返回受限的匹配片段和元数据。"""
         if not isinstance(query, str) or not 1 <= len(query) <= MAX_QUERY_CHARS:
             raise InvalidArtifactRequest(f"Query must contain 1 to {MAX_QUERY_CHARS} characters.")
         metadata, text = self._load(artifact_id, include_content=True)
@@ -230,7 +239,7 @@ class ArtifactStore:
         return metadata, matches
 
     def recent(self) -> list[ArtifactMetadata]:
-        """Find a bounded set of recently published records without loading text."""
+        """查找一定数量的近期发布记录，无需加载正文。"""
         try:
             self._check_directories()
             with os.scandir(self.directory) as entries:
@@ -265,6 +274,7 @@ class ArtifactRun:
     catalog: list[ArtifactMetadata] = field(default_factory=list)
 
     def record(self, event: ArtifactEvent, metadata: ArtifactMetadata) -> None:
+        """创建事件到来时更新近期产物目录，并将产物事件通知追踪回调。"""
         if event == "artifact_created":
             self.catalog.insert(0, metadata)
             del self.catalog[_CATALOG_SIZE:]
@@ -273,13 +283,16 @@ class ArtifactRun:
 
     @property
     def capture_bytes(self) -> int:
+        """计算捕获上限，兼顾产物字节限制和内联字符阈值。"""
         max_inline_bytes = min(self.threshold_chars * 4, MAX_ARTIFACT_BYTES)
         return max(self.store.max_bytes, max_inline_bytes)
 
     def failure(self, detail: str) -> str:
+        """构造产物保存失败时使用的工具结果。"""
         return f"Tool ran. Output not saved. {detail}"[:self.output_chars]
 
     def context(self) -> str:
+        """生成可供模型使用的近期产物说明。"""
         if not self.catalog:
             return ""
         names = [re.sub(r"[^A-Za-z0-9_-]", "?", item.tool_name[:64]) for item in self.catalog]

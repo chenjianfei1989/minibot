@@ -1,4 +1,4 @@
-"""/memory command handler."""
+"""/memory 命令处理器。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from ..utils.output import print_panel, print_system
 
 
 def _parse_args(raw: str) -> tuple[str, str]:
-    """Split 'subcommand rest' from raw args string."""
+    """从原始参数串中拆出子命令与其余参数。"""
     parts = raw.strip().split(maxsplit=1)
     sub = parts[0] if parts else ""
     rest = parts[1] if len(parts) > 1 else ""
@@ -17,7 +17,7 @@ def _parse_args(raw: str) -> tuple[str, str]:
 
 
 async def handle_memory_cmd(raw_args: str, memory_manager: MemoryManager) -> None:
-    """Dispatch /memory subcommands."""
+    """分发 /memory 子命令。"""
     if memory_manager is None:
         print_system("Memory is disabled.")
         return

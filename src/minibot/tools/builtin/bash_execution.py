@@ -26,7 +26,7 @@ _DURABLE_LABEL = "io.minibot.durable-container"
 
 
 class ExecutionCleanupCancelledError(asyncio.CancelledError):
-    """Cancellation completed with an explicit resource-cleanup diagnostic."""
+    """取消已完成，并附带明确的资源清理诊断信息。"""
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,7 @@ class _DrainedOutput:
 
 
 async def _settle(task: asyncio.Task):
+    """等待清理任务结束，并记录等待期间收到的取消信号。"""
     cancelled = False
     while not task.done():
         try:
@@ -64,6 +65,7 @@ async def _settle(task: asyncio.Task):
 
 
 async def _drain(reader: asyncio.StreamReader, limit: int) -> _DrainedOutput:
+    """持续读取流，限制保留的字节数并记录输出是否被截断。"""
     output = bytearray()
     exceeded = False
     try:
@@ -73,12 +75,13 @@ async def _drain(reader: asyncio.StreamReader, limit: int) -> _DrainedOutput:
                 exceeded = True
             output.extend(chunk[:spare])
     except asyncio.CancelledError:
-        # Only the owning supervisor cancels drainers after its bounded drain.
+        # 只有拥有读取任务的管理器才会在限时读取结束后取消这些任务。
         return _DrainedOutput(bytes(output), exceeded, True)
     return _DrainedOutput(bytes(output), exceeded, False)
 
 
 async def _kill_tree(proc: asyncio.subprocess.Process) -> None:
+    """按操作系统结束受管的进程树。"""
     if os.name == "posix":
         try:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -109,6 +112,7 @@ async def _kill_tree(proc: asyncio.subprocess.Process) -> None:
 
 
 async def _feed_stdin(writer: asyncio.StreamWriter, data: bytes) -> None:
+    """把请求数据写入子进程的标准输入并关闭写端。"""
     try:
         with suppress(BrokenPipeError, ConnectionResetError):
             for start in range(0, len(data), 65536):
@@ -122,6 +126,7 @@ async def _process(
     *args: str, cwd: Path, env: dict[str, str] | None = None, output_limit: int | None = None,
     stdin: bytes | None = None,
 ) -> ExecutionResult:
+    """启动受管进程，采集标准输出和错误，并在取消或超时时等待清理。"""
     per_stream_limit = _OUTPUT_LIMIT if output_limit is None else output_limit
     spawn = asyncio.create_task(asyncio.create_subprocess_exec(
         *args, cwd=cwd, env=env,
@@ -141,13 +146,14 @@ async def _process(
         ]
         if stdin is not None:
             writer = asyncio.create_task(_feed_stdin(proc.stdin, stdin))
-        # Process.wait can wait for inherited pipes after the shell has exited.
+        # Shell 退出后，Process.wait 仍可能等待子进程继承的管道。
         while proc.returncode is None:
             await asyncio.sleep(0.01)
     finally:
         interrupted = isinstance(sys.exception(), asyncio.CancelledError)
 
         async def finalize():
+            """收尾子进程，处理尚未完成的启动和输出读取任务。"""
             nonlocal proc, readers
             if proc is None:
                 proc = await spawn
@@ -163,13 +169,13 @@ async def _process(
             await _kill_tree(proc)
             if writer is not None:
                 await asyncio.gather(writer, return_exceptions=True)
-            # Detached sessions are outside local ownership and may retain pipes.
+            # 分离的会话不受本地管理器管控，可能仍持有管道。
             done, pending = await asyncio.wait(readers, timeout=1)
             for reader in pending:
                 reader.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
-            # asyncio Process has no public pipe-close method. Escaped sessions may
-            # retain descriptors, so close our transports after the bounded drain.
+            # asyncio Process 没有公开的关闭管道方法。脱离控制的会话可能仍持有文件描述符，
+            # 因此限时读取结束后关闭本进程的传输对象。
             proc._transport.close()
         try:
             await _settle(asyncio.create_task(finalize()))
@@ -199,6 +205,7 @@ class LocalCommand:
     async def run(
         self, command: str, *, timeout: float, output_limit: int | None = None,
     ) -> ExecutionResult:
+        """在给定超时和输出限制下执行本地命令。"""
         async with asyncio.timeout(timeout):
             if os.name == "nt":
                 return await _process(
@@ -209,6 +216,7 @@ class LocalCommand:
 
 
 def _trusted_docker_cli(workdir: Path, env: dict[str, str]) -> str:
+    """从受信任的搜索目录确定 Docker CLI 的可执行路径。"""
     search_dirs = []
     for entry in env.get("PATH", os.defpath).split(os.pathsep):
         directory = Path(entry)
@@ -239,11 +247,21 @@ class DockerEngine:
 
 class DockerLease(Protocol):
     @property
-    def engine(self) -> DockerEngine: ...
-    def pending(self) -> DockerContainer | None: ...
-    def reserve(self, name: str) -> None: ...
-    def confirm(self, name: str, container_id: str) -> None: ...
-    def release(self, name: str) -> None: ...
+    def engine(self) -> DockerEngine:
+        """返回容器租约绑定的 Docker 守护进程标识。"""
+        ...
+    def pending(self) -> DockerContainer | None:
+        """读取目前仍需处理的容器租约记录。"""
+        ...
+    def reserve(self, name: str) -> None:
+        """登记即将创建的容器名。"""
+        ...
+    def confirm(self, name: str, container_id: str) -> None:
+        """确认租约中指定容器的完整 ID。"""
+        ...
+    def release(self, name: str) -> None:
+        """释放指定容器的租约记录。"""
+        ...
 
 
 @dataclass(frozen=True)
@@ -253,31 +271,37 @@ class _DockerClient:
     env: dict[str, str]
 
     async def cli(self, *args: str) -> ExecutionResult:
+        """在管理操作的时限内发起 Docker CLI 调用。"""
         async with asyncio.timeout(_ADMIN_TIMEOUT):
             return await _process(self.executable, *args, cwd=self.cwd, env=self.env)
 
     async def checked(self, *args: str) -> str:
+        """执行 Docker 管理命令，失败时将诊断转换为异常。"""
         result = await self.cli(*args)
         if result.exit_code or result.incomplete_output:
             raise RuntimeError(f"Docker {' '.join(args[:2])} failed: {result.stderr.strip() or result.stdout.strip()}")
         return result.stdout
 
     async def image_id(self, image: str) -> str:
+        """查询镜像信息，验证配置并返回本地镜像 ID。"""
         details = json.loads(await self.checked("image", "inspect", image))[0]
         if details.get("Config", {}).get("Volumes"):
             raise RuntimeError("Docker Bash rejects image-declared volumes")
         return details["Id"]
 
     async def engine(self) -> DockerEngine:
+        """读取 Docker 守护进程标识及连接端点。"""
         engine_id = (await self.checked("info", "--format", "{{.ID}}")).strip()
         if not engine_id:
             raise RuntimeError("Docker did not report a daemon ID")
         return DockerEngine(self.env["DOCKER_HOST"], engine_id)
 
     async def reconcile(self, record: DockerContainer) -> None:
-        # The exact name supplies the evidence of a committed create if its
-        # response did not reach MiniBot. A known ID also covers a prior rm.
+        # 如果容器创建响应未送达 MiniBot，可用准确的容器名
+        # 查证创建是否已提交。已知容器 ID 也能处理此前已删除容器的情况。
+        """根据租约查找仍存在的容器，完成删除并核验清理结果。"""
         async def matches() -> list[str]:
+            """查找租约可能关联的 Docker 容器标识。"""
             result = await self.checked(
                 "ps", "--all", "--no-trunc", "--filter", f"name=^/{record.name}$",
                 "--format", "{{.ID}}",
@@ -288,7 +312,7 @@ class _DockerClient:
         if not found:
             if record.container_id is None:
                 raise RuntimeError("Docker create may still be in flight")
-            # Also find renamed containers by ID. A late start uses this ID.
+            # 通过 ID 查找已改名的容器。稍后启动容器时也会使用这个 ID。
             found = (await self.checked(
                 "ps", "--all", "--no-trunc", "--filter", f"id={record.container_id}", "--format", "{{.ID}}",
             )).split()
@@ -316,12 +340,14 @@ class DockerCommand:
     _root_key: tuple[int, int] | None = field(init=False, default=None, repr=False)
 
     def __post_init__(self) -> None:
+        """根据配置初始化工作区根目录和执行配置。"""
         if isinstance(self.config, WorkspaceConfig):
             object.__setattr__(self, "_root_key", restricted_root_key(self.workdir))
         elif self.lease is not None:
             raise ValueError("A durable Docker lease requires a restricted workspace")
 
     def bind_root(self) -> Path:
+        """绑定并校验当前工作区根目录标识。"""
         if self._root_key is None:
             return self.workdir.resolve()
         if restricted_root_key(self.workdir) != self._root_key:
@@ -331,10 +357,12 @@ class DockerCommand:
     async def run(
         self, command: str, *, timeout: float, output_limit: int | None = None,
     ) -> ExecutionResult:
+        """在 Docker 工作区运行一条 Shell 命令。"""
         return await self.execute("/bin/sh", "-c", command, timeout=timeout, output_limit=output_limit)
 
     @asynccontextmanager
     async def _client(self):
+        """构造执行配置所允许的 Docker CLI 客户端。"""
         restricted = isinstance(self.config, WorkspaceConfig)
         env = dict(os.environ)
         executable = _trusted_docker_cli(self.bind_root(), env) if restricted else "docker"
@@ -351,7 +379,7 @@ class DockerCommand:
         if not restricted:
             yield client
             return
-        # The original Docker CLI config can automatically inject proxy settings.
+        # 原有 Docker CLI 配置可能自动注入代理设置。
         temp_parent = Path(gettempdir())
         require_outside_root(self.workdir, temp_parent, "Docker CLI temporary directory")
         with TemporaryDirectory(prefix="minibot-docker-", dir=temp_parent) as cli_config:
@@ -361,10 +389,12 @@ class DockerCommand:
             yield client
 
     async def probe(self) -> tuple[DockerEngine, str]:
+        """查询当前 Docker 守护进程和配置镜像的标识。"""
         async with self._client() as client:
             return await client.engine(), await client.image_id(self.config.image)
 
     async def reconcile(self) -> None:
+        """核对租约并清理之前未结案的容器。"""
         if self.lease is None:
             return
         async with self._client() as client:
@@ -376,6 +406,7 @@ class DockerCommand:
         self, program: str, *arguments: str, timeout: float, output_limit: int | None = None,
         stdin: bytes | None = None,
     ) -> ExecutionResult:
+        """管理 Docker 命令所需资源，在作用域内执行指定程序。"""
         async with AsyncExitStack() as resources:
             return await self._execute(
                 resources, program, *arguments, timeout=timeout, output_limit=output_limit, stdin=stdin,
@@ -385,6 +416,7 @@ class DockerCommand:
         self, resources: AsyncExitStack, program: str, *arguments: str, timeout: float, output_limit: int | None,
         stdin: bytes | None,
     ) -> ExecutionResult:
+        """校验执行环境，创建容器并收集程序输出，退出时进行清理。"""
         restricted = isinstance(self.config, WorkspaceConfig)
         label = "workspace" if restricted else "bash"
         name = f"minibot-{label}-{uuid.uuid4().hex}"
@@ -395,6 +427,7 @@ class DockerCommand:
             raise RuntimeError("Docker cleanup is still pending for this child")
 
         async def cleanup():
+            """等待容器创建操作稳定后，核对容器状态并清理。"""
             create_uncertain = False
             create_failed = False
             if create_task is not None:
@@ -444,6 +477,7 @@ class DockerCommand:
                 args += ["--entrypoint", program, image_id, *arguments]
 
                 async def create() -> str:
+                    """创建容器，并在使用租约时登记 Docker 返回的完整容器 ID。"""
                     container_id = (await client.checked(*args)).strip()
                     if lease is None:
                         return name

@@ -1,4 +1,4 @@
-"""Agent team orchestration package."""
+"""Agent 团队编排包。"""
 
 from .models import (
     MemberStatus,

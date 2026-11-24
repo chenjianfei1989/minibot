@@ -1,4 +1,4 @@
-"""Tests for MCPManager extensions and /mcp command handler."""
+"""测试 MCPManager 扩展及 /mcp 命令处理器。"""
 
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -43,7 +43,7 @@ async def test_connect_server_returns_error_for_unknown():
 @pytest.mark.asyncio
 async def test_disconnect_server_no_op_when_not_connected():
     mgr = _make_manager()
-    await mgr.disconnect_server("ctx7")  # should not raise
+    await mgr.disconnect_server("ctx7")  # 此调用应正常完成。
     assert mgr.is_connected("ctx7") is False
 
 

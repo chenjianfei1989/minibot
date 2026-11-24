@@ -1,4 +1,4 @@
-"""Verify the restricted workspace boundary without requiring a daemon."""
+"""无需启动守护进程即可验证受限工作区的边界。"""
 
 import asyncio
 import builtins

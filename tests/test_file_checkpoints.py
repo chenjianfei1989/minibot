@@ -1,4 +1,4 @@
-"""Drive checkpointed file tools in real, dirty Git worktrees."""
+"""在含有未提交变更的真实 Git 工作树中测试文件检查点工具。"""
 
 import asyncio
 import json
@@ -77,7 +77,7 @@ async def test_checkpoint_restores_exact_dirty_bytes_and_mode_without_touching_i
     original_mode = stat.S_IMODE(target.stat().st_mode)
     refs = git(worktree, "for-each-ref")
 
-    # Misleading inherited Git settings must not redirect either repo detection or snapshot storage.
+    # 继承的错误 Git 设置不得改变仓库探测和快照存储的位置。
     for variable in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY"):
         monkeypatch.setenv(variable, str(tmp_path / "wrong"))
     app_home = tmp_path / "app"

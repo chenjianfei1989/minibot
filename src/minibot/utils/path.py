@@ -1,11 +1,11 @@
-"""Path utilities."""
+"""路径辅助函数。"""
 
 import os
 from pathlib import Path
 
 
 def safe_path(workdir: Path, path: str) -> Path:
-    """Ensure path stays within workspace."""
+    """确保路径位于工作区内。"""
     resolved = (workdir / path).resolve()
     if not resolved.is_relative_to(workdir):
         raise ValueError(f"Path escapes workspace: {path}")
@@ -13,7 +13,7 @@ def safe_path(workdir: Path, path: str) -> Path:
 
 
 def resolve_project_root(cwd: Path) -> Path:
-    """Resolve project root by searching for a Git root from cwd upward."""
+    """从当前工作目录向上查找 Git 根目录，以确定项目根目录。"""
     current = cwd.resolve()
     for candidate in (current, *current.parents):
         if (candidate / ".git").exists():
@@ -22,7 +22,7 @@ def resolve_project_root(cwd: Path) -> Path:
 
 
 def resolve_app_home() -> Path:
-    """Resolve persistent minibot home directory."""
+    """解析 MiniBot 的持久化主目录。"""
     home = os.getenv("MINIBOT_HOME", "").strip()
     if home:
         return Path(home).expanduser().resolve()

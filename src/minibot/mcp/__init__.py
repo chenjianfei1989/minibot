@@ -1,4 +1,4 @@
-"""MCP (Model Context Protocol) client implementation."""
+"""MCP（模型上下文协议）客户端实现。"""
 
 from .protocol import MCPTool, MCPToolCall, MCPToolResult, MCPResource
 from .client import MCPClient

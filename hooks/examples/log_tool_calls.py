@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Log tool calls hook - logs all tool executions to a file."""
+"""工具调用日志钩子，将每次工具执行记录到文件。"""
 
 import json
 import os
@@ -20,7 +20,7 @@ def main():
 
     try:
         args = json.loads(tool_args)
-        # Truncate long values
+        # 截断过长的值。
         for key, value in args.items():
             if isinstance(value, str) and len(value) > 200:
                 args[key] = value[:200] + "..."

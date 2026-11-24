@@ -1,4 +1,4 @@
-"""Tests for /memory command handler."""
+"""测试 /memory 命令处理器。"""
 
 from unittest.mock import MagicMock, patch
 

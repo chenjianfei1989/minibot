@@ -1,4 +1,4 @@
-"""Team orchestration runtime."""
+"""团队编排运行时。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .store import TeamStore
 
 
 class TeamRuntime:
-    """Manages one active in-process team for the current lead session."""
+    """为当前负责人会话管理一个进程内活跃团队。"""
 
     def __init__(
         self,
@@ -24,6 +24,7 @@ class TeamRuntime:
         workdir: Path,
         hook_manager: HookManager | None = None,
     ):
+        """根据团队配置和工作目录初始化存储及运行时资源。"""
         self.config = config
         self.workdir = workdir
         self.hook_manager = hook_manager
@@ -35,7 +36,7 @@ class TeamRuntime:
         self._member_histories: dict[str, list[dict[str, Any]]] = {}
 
     def set_agent_factory(self, factory: Callable[[str, str], Any]) -> None:
-        """Inject teammate agent factory."""
+        """注入创建队友 Agent 的工厂函数。"""
         self._agent_factory = factory
 
     async def create_team(
@@ -45,7 +46,7 @@ class TeamRuntime:
         team_name: str,
         member_count: int,
     ) -> dict[str, Any]:
-        """Create team and spawn teammate workers."""
+        """创建团队并启动队友工作任务。"""
         if actor_role not in {"lead", "solo"}:
             raise PermissionError("Only lead can create a team")
         if member_count < 1:
@@ -65,7 +66,7 @@ class TeamRuntime:
         return as_dict(team)
 
     async def spawn_members(self, teammate_ids: list[str]) -> None:
-        """Spawn worker loops for teammates."""
+        """启动队友的工作循环。"""
         for member_id in teammate_ids:
             if member_id in self._member_workers:
                 continue
@@ -89,7 +90,7 @@ class TeamRuntime:
         member_id: str,
         mailbox: "asyncio.Queue[dict[str, Any]]",
     ) -> None:
-        """Worker loop for one teammate."""
+        """单个队友的工作循环。"""
         while True:
             item = await mailbox.get()
             kind = item.get("kind", "message")
@@ -149,6 +150,7 @@ class TeamRuntime:
                 )
 
     def _build_member_prompt(self, item: dict[str, Any]) -> str:
+        """根据收件内容为队友生成任务或团队消息提示词。"""
         kind = item.get("kind")
         if kind == "task_assigned":
             task = item["task"]
@@ -168,11 +170,12 @@ class TeamRuntime:
         )
 
     def _ensure_team(self) -> None:
+        """确认团队已经创建，供后续团队操作使用。"""
         if not self.store.has_team:
             raise ValueError("No active team")
 
     async def list_members(self) -> list[dict[str, Any]]:
-        """List current members."""
+        """列出当前成员。"""
         members = await self.store.list_members()
         return [as_dict(m) for m in members]
 
@@ -183,7 +186,7 @@ class TeamRuntime:
         recipient_id: str,
         content: str,
     ) -> dict[str, Any]:
-        """Direct message from one member to another."""
+        """从一名成员向另一名成员发送私信。"""
         self._ensure_team()
         msg = await self.store.add_message(
             sender_id=sender_id,
@@ -208,7 +211,7 @@ class TeamRuntime:
         sender_id: str,
         content: str,
     ) -> dict[str, Any]:
-        """Broadcast message to all members except sender."""
+        """向发送者之外的全部成员广播消息。"""
         self._ensure_team()
         members = await self.store.list_members()
         delivered = 0
@@ -242,7 +245,7 @@ class TeamRuntime:
         details: str,
         assignee_id: str | None = None,
     ) -> dict[str, Any]:
-        """Create task (lead only)."""
+        """创建任务，仅负责人可操作。"""
         if actor_role != "lead":
             raise PermissionError("Only lead can create tasks")
         task = await self.store.create_task(
@@ -265,7 +268,7 @@ class TeamRuntime:
         task_id: str,
         assignee_id: str,
     ) -> dict[str, Any]:
-        """Assign task to teammate (lead only)."""
+        """向队友分配任务，仅负责人可操作。"""
         if actor_role != "lead":
             raise PermissionError("Only lead can assign tasks")
         task = await self.store.assign_task(task_id, assignee_id)
@@ -283,7 +286,7 @@ class TeamRuntime:
         actor_id: str,
         task_id: str | None = None,
     ) -> dict[str, Any]:
-        """Claim task (teammates only)."""
+        """认领任务，仅队友可操作。"""
         if actor_role != "teammate":
             raise PermissionError("Only teammates can claim tasks")
         task = await self.store.claim_task(actor_id, task_id=task_id)
@@ -297,7 +300,7 @@ class TeamRuntime:
         task_id: str,
         note: str | None = None,
     ) -> dict[str, Any]:
-        """Complete task (lead or owning teammate)."""
+        """完成任务，仅负责人或持有任务的队友可操作。"""
         tasks = await self.store.list_tasks()
         task = next((t for t in tasks if t.task_id == task_id), None)
         if task is None:
@@ -319,17 +322,17 @@ class TeamRuntime:
         return as_dict(completed)
 
     async def list_tasks(self) -> list[dict[str, Any]]:
-        """List all tasks."""
+        """列出全部任务。"""
         tasks = await self.store.list_tasks()
         return [as_dict(t) for t in tasks]
 
     async def wait_events(self, timeout_sec: int, max_events: int = 20) -> list[dict[str, Any]]:
-        """Wait for team runtime events."""
+        """等待团队运行时事件。"""
         self._ensure_team()
         return await self.store.wait_events(timeout_sec, max_events=max_events)
 
     async def drain_inbox(self, member_id: str) -> list[dict[str, Any]]:
-        """Read pending inbox items without blocking."""
+        """以非阻塞方式读取收件箱中的待处理消息。"""
         self._ensure_team()
         mailbox = await self.store.register_mailbox(member_id)
         drained: list[dict[str, Any]] = []
@@ -341,7 +344,7 @@ class TeamRuntime:
         return drained
 
     async def shutdown_member(self, *, actor_role: str, member_id: str) -> None:
-        """Gracefully stop one teammate."""
+        """正常停止一个队友。"""
         if actor_role != "lead":
             raise PermissionError("Only lead can shut down teammates")
         if member_id == "lead":
@@ -389,7 +392,7 @@ class TeamRuntime:
             self._member_histories.pop(member_id, None)
 
     async def cleanup_team(self, *, actor_role: str) -> None:
-        """Shutdown all workers and clear team state."""
+        """停止所有工作任务并清空团队状态。"""
         if actor_role != "lead":
             raise PermissionError("Only lead can clean up team")
         for member_id in list(self._member_workers.keys()):
@@ -404,23 +407,23 @@ class TeamRuntime:
         await self.store.clear_team()
 
     async def acquire_file_lock(self, *, member_id: str, path: str) -> tuple[bool, str | None]:
-        """Acquire file lock for teammate write."""
+        """为队友的文件写入获取文件锁。"""
         return await self.store.acquire_file_lock(path=path, member_id=member_id)
 
     async def acquire_workspace_lock(self, *, member_id: str) -> tuple[bool, str | None]:
-        """Acquire workspace lock for teammate bash."""
+        """为队友的 Bash 执行获取工作区锁。"""
         return await self.store.acquire_workspace_lock(member_id=member_id)
 
     async def release_member_locks(self, member_id: str) -> None:
-        """Release all locks held by one member."""
+        """释放一名成员持有的所有锁。"""
         await self.store.release_member_locks(member_id)
 
     async def get_summary(self) -> dict[str, Any]:
-        """Current team summary."""
+        """当前团队的摘要。"""
         return await self.store.summary()
 
     async def enqueue_teammate_task(self, member_id: str, prompt: str) -> None:
-        """Force-send one custom task prompt to teammate."""
+        """强制向队友发送一条自定义任务提示词。"""
         await self.store.enqueue_mail(
             member_id,
             {

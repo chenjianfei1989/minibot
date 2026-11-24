@@ -1,4 +1,4 @@
-"""FastAPI application for Minibot WebUI + SDK server."""
+"""为 MiniBot WebUI 与 SDK 提供服务的 FastAPI 应用。"""
 
 from __future__ import annotations
 

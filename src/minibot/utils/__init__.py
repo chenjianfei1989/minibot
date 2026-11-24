@@ -1,4 +1,4 @@
-"""Utility functions."""
+"""实用函数。"""
 
 from .path import safe_path
 from .output import (

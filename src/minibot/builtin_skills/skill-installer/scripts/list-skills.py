@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List installable skills from a GitHub repo path."""
+"""列出 GitHub 仓库指定路径下可安装的技能。"""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ DEFAULT_REF = "main"
 
 
 class ListError(Exception):
-    """Raised when a remote skill listing cannot be fetched or parsed."""
+    """无法获取或解析远程技能列表时抛出。"""
 
 
 class Args(argparse.Namespace):

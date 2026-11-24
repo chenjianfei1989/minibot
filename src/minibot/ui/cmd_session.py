@@ -1,4 +1,4 @@
-"""/session command handler."""
+"""/session 命令处理器。"""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from ..utils.output import print_panel, print_system
 
 
 class SessionAction(TypedDict, total=False):
-    """Action for the REPL to execute after /session command."""
+    """执行 /session 后由 REPL 处理的操作。"""
 
-    switch_to: str  # session_id to switch to
-    new_history: list[dict]  # history to load
+    switch_to: str  # 要切换到的 session_id。
+    new_history: list[dict]  # 要加载的历史记录。
 
 
 async def handle_session_cmd(
@@ -23,7 +23,7 @@ async def handle_session_cmd(
     current_session_id: str,
     *, run_store: RunStore | None = None,
 ) -> SessionAction | None:
-    """Dispatch /session subcommands. Returns an action for the REPL, or None."""
+    """分发 /session 子命令，返回给 REPL 的操作或 None。"""
     if session_manager is None:
         print_system("Session persistence is disabled.")
         return None

@@ -1,4 +1,4 @@
-"""Human controls for file checkpoints."""
+"""供用户操作文件检查点的命令。"""
 
 import asyncio
 from collections.abc import Awaitable, Callable
@@ -17,7 +17,7 @@ async def handle_checkpoint_cmd(
     checkpoints: GitFileCheckpoints | None,
     confirm: Callable[[str], Awaitable[bool]],
 ) -> None:
-    """List, inspect or restore one file checkpoint."""
+    """列出文件检查点，或查看、恢复指定检查点。"""
     if checkpoints is None:
         print_system("File checkpoints are disabled.")
         return

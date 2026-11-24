@@ -1,4 +1,4 @@
-"""Tests for subagent skills configuration."""
+"""测试子 Agent 的技能配置。"""
 
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-# --- AgentRegistry.apply_config ---
+# --- AgentRegistry.apply_config 配置应用 ---
 
 
 def test_apply_config_enables_skills():
@@ -32,7 +32,7 @@ def test_apply_config_enables_skills():
     assert agent is not None
     assert agent.skills_enabled is True
 
-    # Unaffected agents remain default
+    # 未受影响的 Agent 保持默认设置。
     explore = registry.get("explore")
     assert explore is not None
     assert explore.skills_enabled is False
@@ -61,16 +61,16 @@ def test_apply_config_ignores_unknown_agent():
     config = SubagentsConfig(agents={
         "nonexistent": SubagentConfig(skills_enabled=True),
     })
-    # Should not raise
+    # 此调用应正常完成。
     registry.apply_config(config)
     assert registry.get("nonexistent") is None
 
 
-# --- _get_tools_for_agent with skills ---
+# --- _get_tools_for_agent 获取含技能的工具集 ---
 
 
 class _FakeTool(BaseTool):
-    """Minimal tool stub for testing."""
+    """供测试使用的最小工具桩。"""
 
     def __init__(self, name: str):
         self._name = name
@@ -92,7 +92,7 @@ class _FakeTool(BaseTool):
 
 
 def _build_executor(skills_enabled: bool) -> SubagentExecutor:
-    """Build an executor with explore agent and configurable skills_enabled."""
+    """构造带 explore Agent 和可配置 skills_enabled 的执行器。"""
     registry = AgentRegistry()
     config = SubagentsConfig(agents={
         "explore": SubagentConfig(skills_enabled=skills_enabled),
@@ -210,11 +210,11 @@ def test_get_tools_wildcard_agent_with_skills():
     names = {t["function"]["name"] for t in tools}
     assert "Skill" in names
     assert "bash" in names
-    # Task is always excluded for subagents
+    # 子 Agent 始终排除 Task 工具。
     assert "Task" not in names
 
 
-# --- Config parsing ---
+# --- 配置解析 ---
 
 
 def test_load_config_parses_subagents_skills(tmp_path, monkeypatch):

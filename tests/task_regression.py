@@ -1,4 +1,4 @@
-"""Grade a task using recorded execution and independently observed effects."""
+"""根据执行记录和独立观察到的副作用评估任务。"""
 
 from collections.abc import Mapping
 from dataclasses import dataclass

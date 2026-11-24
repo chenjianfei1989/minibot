@@ -1,4 +1,4 @@
-"""Execution-layer policy and approval for individual tool invocations."""
+"""单次工具调用在执行层适用的策略与审批。"""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ ApprovalObserver = Callable[[ToolApprovalRequest, bool, ApprovalSource], Awaitab
 
 
 def parse_review(text: str) -> ReviewDecision:
-    """Require a single decision with no additional instructions."""
+    """要求给出单个审批决定，无需附加说明。"""
     try:
         result = json.loads(text, object_pairs_hook=list)
     except (ValueError, RecursionError):
@@ -57,10 +57,12 @@ class ApprovedCall:
     requires_active_run: bool = False
 
     def still_targets(self, tool: BaseTool) -> bool:
+        """重新解析文件目标，确认待执行参数仍指向批准时的目标。"""
         return self.file is None or _resolve_target(tool, self.args) == self.file
 
 
 def _resolve_target(tool: BaseTool, args: dict[str, Any]) -> WorkspacePath | None:
+    """从工具参数和后端权限接口取得文件目标。"""
     path = args.get("path")
     if not isinstance(tool, WorkspaceFileTool) or not isinstance(path, str) or not path:
         return None
@@ -82,14 +84,15 @@ class PermissionRun:
     async def authorize(
         self, name: str, args: dict[str, Any], tool: BaseTool, actor: str,
     ) -> ApprovedCall | None:
+        """按工具规则和默认策略作出权限决定，必要时发起审批。"""
         choice = self.policy.rules.get(name, self.policy.default)
         target = None
         if type(tool) in _FILE_TYPES:
             target = _resolve_target(tool, args)
             if target is None:
                 choice = "deny"
-        # Model tool arguments are JSON. This snapshot is independent of the input
-        # and of any mutable copy passed to hooks later.
+        # 模型给出的工具参数是 JSON。此快照独立于原始输入，
+        # 也独立于之后传给钩子的任何可变副本。
         try:
             encoded = json.dumps(args, ensure_ascii=True, allow_nan=False, indent=2)
             arguments = json.loads(encoded)
@@ -110,8 +113,8 @@ class PermissionRun:
             await self.observe(request, False, "policy")
             return None
 
-        # The reviewer cannot grant permission outside an explicitly configured
-        # path, or approve generic tools that may have external effects.
+        # 审核器只能批准显式配置的路径，
+        # 且不能批准可能产生外部副作用的通用工具。
         if self._can_review(tool, call, encoded):
             brief = json.dumps(
                 {"user_request": self.user_intent, "tool": name, "arguments": arguments},
@@ -137,6 +140,7 @@ class PermissionRun:
         return call if approved and self.active else None
 
     def _can_review(self, tool: BaseTool, call: ApprovedCall, preview: str) -> bool:
+        """判断当前工具和文件目标是否满足模型审核的范围限制。"""
         if (
             self.policy.mode != "auto_review" or not self.user_intent or type(tool) not in _WRITE_TYPES
             or call.file is None or len(preview) > _MAX_REVIEW_INPUT

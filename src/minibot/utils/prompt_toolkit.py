@@ -1,7 +1,6 @@
-"""Prompt-toolkit based interactive input (optional).
+"""基于 prompt-toolkit 的可选交互输入。
 
-This module is intentionally optional: if prompt_toolkit is not installed or
-stdin/stdout is not a TTY, callers should fall back to builtin input().
+未安装 prompt_toolkit，或标准输入与输出不满足 TTY 条件时，调用方应回退到内置的 input()。
 """
 
 from __future__ import annotations
@@ -85,7 +84,7 @@ class PromptToolkitInput:
                 return False
 
     def prompt(self, *, label: str = "You: ") -> str:
-        """Synchronous wrapper for non-async entrypoints."""
+        """供非异步入口使用的同步包装函数。"""
         import asyncio
 
         try:
@@ -95,7 +94,7 @@ class PromptToolkitInput:
         raise RuntimeError("PromptToolkitInput.prompt() cannot be used inside a running event loop; use prompt_async().")
 
     def confirm(self, prompt: str, *, default: bool = False) -> bool:
-        """Synchronous wrapper for non-async entrypoints."""
+        """供非异步入口使用的同步包装函数。"""
         import asyncio
 
         try:
@@ -129,8 +128,8 @@ class _SlashCommandCompleter:
             )
 
     async def get_completions_async(self, document, complete_event):  # noqa: ANN001
-        # prompt_toolkit expects this method for async completion. We keep the
-        # implementation synchronous and expose an async wrapper.
+        # prompt_toolkit 通过这个方法执行异步补全。实际补全仍同步执行，
+        # 并通过异步包装方法对外提供。
         for completion in self.get_completions(document, complete_event) or ():
             yield completion
 

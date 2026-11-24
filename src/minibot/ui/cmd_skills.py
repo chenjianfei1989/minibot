@@ -1,4 +1,4 @@
-"""/skills command handler."""
+"""/skills 命令处理器。"""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ class SkillItem:
 
 
 async def handle_skills_cmd(raw_args: str, agent: Agent) -> None:
-    """Dispatch /skills subcommands."""
+    """分发 /skills 子命令。"""
     parts = raw_args.strip().split(maxsplit=1) if raw_args.strip() else []
     sub = parts[0].lower() if parts else ""
     rest = parts[1].strip() if len(parts) > 1 else ""

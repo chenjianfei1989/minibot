@@ -1,4 +1,4 @@
-"""Allowlisted, per-run execution records, separate from rich stream payloads."""
+"""按次运行记录允许列表中的执行字段，与完整的流式事件载荷分开。"""
 
 from __future__ import annotations
 
@@ -41,9 +41,10 @@ class _ModelAttempt:
 
 
 class SubagentTrace:
-    """Sequential operations within one built-in Task invocation."""
+    """单次内置 Task 调用中的顺序操作。"""
 
     def __init__(self, trace: RunTrace, parent: Invocation, agent_type: str) -> None:
+        """绑定父运行和父调用信息，建立子 Agent 的追踪作用域。"""
         self._trace = trace
         self.run_id = uuid.uuid4().hex
         self._identity = {"child_run_id": self.run_id, "parent_invocation_id": parent.id}
@@ -52,9 +53,11 @@ class SubagentTrace:
         self._write("subagent_start", agent_type=agent_type)
 
     def _write(self, event: str, **fields: Any) -> None:
+        """附上子运行标识后写入一条追踪事件。"""
         self._trace._write(event, **self._identity, **fields)
 
     def observe_artifact(self, event: ArtifactEvent, metadata: ArtifactMetadata) -> None:
+        """记录归属于当前子 Agent 调用的产物操作。"""
         invocation = self._pending
         if not isinstance(invocation, Invocation):
             return
@@ -66,11 +69,13 @@ class SubagentTrace:
         )
 
     def start_model(self) -> None:
+        """创建一次子 Agent 模型请求的标识并记录开始时间。"""
         attempt = _ModelAttempt(uuid.uuid4().hex, time.monotonic())
         self._pending = attempt
         self._write("subagent_model_start", invocation_id=attempt.id)
 
     def finish_model(self, usage: Any = None, *, status: SubagentStatus = "completed") -> None:
+        """结束当前模型请求的追踪，保存状态与可用的用量信息。"""
         attempt = self._pending
         if not isinstance(attempt, _ModelAttempt):
             return
@@ -87,6 +92,7 @@ class SubagentTrace:
         )
 
     def start_tool(self, call_id: str, name: str) -> None:
+        """创建并记录一次子 Agent 工具调用的起始信息。"""
         invocation = Invocation(
             uuid.uuid4().hex,
             call_id if isinstance(call_id, str) else "",
@@ -100,6 +106,7 @@ class SubagentTrace:
         )
 
     def finish_tool(self, outcome: ToolOutcome | None = None, *, status: str = "error") -> None:
+        """结束当前子 Agent 工具调用的追踪并记录执行结果。"""
         invocation = self._pending
         if not isinstance(invocation, Invocation):
             return
@@ -119,6 +126,7 @@ class SubagentTrace:
         )
 
     def close(self, status: SubagentStatus, *, budget_limit: str | None = None) -> None:
+        """结束追踪中尚未关闭的模型或工具调用并记录子运行状态。"""
         self.finish_model(status=status)
         tool_status = "timeout" if budget_limit == "max_wall_time" else (
             "interrupted" if status == "interrupted" else "error"
@@ -131,12 +139,13 @@ class SubagentTrace:
 
 
 class RunTrace:
-    """One producer owns one file. Write failures never replace runtime outcomes."""
+    """每个生产者独占一个文件。写入失败时仍保留原执行结果。"""
 
     def __init__(
         self, directory: Path, session_id: str, *, run_id: str | None = None,
         parent_run_id: str | None = None,
     ) -> None:
+        """初始化运行标识、计时和追踪文件。"""
         self.run_id = uuid.UUID(run_id).hex if run_id else uuid.uuid4().hex
         self.session_id = session_id
         self.started = time.monotonic()
@@ -156,6 +165,7 @@ class RunTrace:
         )
 
     def _disable(self) -> None:
+        """记录诊断并禁用当前运行的追踪写入。"""
         logging.getLogger(__name__).warning("Execution trace unavailable; recording disabled for this run.")
         file, self._file = self._file, None
         if file is not None:
@@ -165,6 +175,7 @@ class RunTrace:
                 pass
 
     def _write(self, event: str, **fields: Any) -> None:
+        """把规范化后的事件记录追加到当前追踪文件。"""
         if self._file is None:
             return
         self.sequence += 1
@@ -181,6 +192,7 @@ class RunTrace:
             self._disable()
 
     def finish_tool(self, *, status: str, is_error: bool, **fields: Any) -> None:
+        """结束当前父级工具调用并写入结束状态及耗时。"""
         invocation, self.pending = self.pending, None
         if invocation is None:
             return
@@ -196,11 +208,13 @@ class RunTrace:
         )
 
     def _finish_subagent(self, status: SubagentStatus, *, budget_limit: str | None = None) -> None:
+        """取出当前子追踪并按给定状态结束它。"""
         child, self._subagent = self._subagent, None
         if child is not None:
             child.close(status, budget_limit=budget_limit)
 
     def link_durable_child(self, child_run_id: str, parent_step_id: str, agent_type: str) -> None:
+        """将持久化子运行标识关联到当前父工具调用。"""
         invocation = self.pending
         self._write(
             "durable_child", child_run_id=child_run_id, parent_step_id=parent_step_id,
@@ -209,6 +223,7 @@ class RunTrace:
 
     @contextmanager
     def subagent(self, agent_type: str) -> Iterator[SubagentTrace | None]:
+        """为当前委派调用建立并管理子 Agent 追踪上下文。"""
         parent = self.pending
         if self._file is None or parent is None or parent.name != "Task" or self._subagent is not None:
             yield None
@@ -218,7 +233,7 @@ class RunTrace:
         try:
             yield child
         except (asyncio.CancelledError, KeyboardInterrupt):
-            # The enclosing Task can distinguish a shared wall timeout from user cancellation.
+            # 外层 Task 能区分共享时间预算超时和用户取消。
             raise
         except ContextWindowExceeded:
             self._finish_subagent("context_window_exceeded")
@@ -233,6 +248,7 @@ class RunTrace:
             self._finish_subagent("completed")
 
     def observe_artifact(self, event: ArtifactEvent, metadata: ArtifactMetadata) -> None:
+        """记录父运行工具调用中的产物操作。"""
         invocation = self.pending
         if not isinstance(invocation, Invocation):
             return
@@ -244,6 +260,7 @@ class RunTrace:
         )
 
     def observe(self, event: StreamEvent) -> None:
+        """将 Agent 发出的结构化事件转换为支持的追踪记录。"""
         kind = event.get("type")
         if kind == "tool_call":
             invocation = Invocation(
@@ -279,6 +296,7 @@ class RunTrace:
             self._write("run_resumed")
 
     def close(self, status: RunStatus, *, budget_limit: str | None = None) -> None:
+        """写入运行结束状态，清理未结束的调用和追踪资源。"""
         self.finish_tool(status="interrupted" if status == "interrupted" else "error", is_error=True)
         fields = {"budget_limit": budget_limit} if budget_limit is not None else {}
         self._write("run_end", status=status, duration_ms=(time.monotonic() - self.started) * 1000, **fields)

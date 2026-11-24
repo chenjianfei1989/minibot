@@ -1,4 +1,4 @@
-"""Export child workspace files and verify them before explicit integration."""
+"""导出子工作区文件，在显式合入父工作区前验证内容。"""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ class ChildArtifact:
 
 
 def _artifact_parts(path: str) -> tuple[str, ...]:
+    """校验交付文件路径并拆分为安全的工作区相对路径组件。"""
     if not isinstance(path, str) or len(path.encode("utf-8")) > _MAX_PATH_BYTES:
         raise ValueError("Deliverable paths must be nonempty workspace-relative file names.")
     parts = restricted_parts(path)
@@ -43,7 +44,7 @@ def _artifact_parts(path: str) -> tuple[str, ...]:
 
 
 def parse_deliverable_paths(value: object) -> tuple[str, ...]:
-    """Parse up to 32 distinct canonical workspace-relative file names."""
+    """解析最多 32 个不同的、规范化的工作区相对文件名。"""
     if not isinstance(value, list) or len(value) > _MAX_FILES:
         raise ValueError(f"Deliverables must be an array of up to {_MAX_FILES} file paths.")
     paths = tuple("/".join(_artifact_parts(path)) for path in value)
@@ -55,7 +56,7 @@ def parse_deliverable_paths(value: object) -> tuple[str, ...]:
 async def export_child_artifacts(
     child: ChildRun, backend: DockerBackend, store: ArtifactStore, paths: tuple[str, ...],
 ) -> tuple[ChildArtifact, ...]:
-    """Read exactly the requested files through the child's restricted backend."""
+    """通过子运行的受限后端仅读取指定的文件。"""
     workspace_id = child.run.workspace_id
     if backend.identity.value != workspace_id or store.workspace_id != workspace_id:
         raise ArtifactError("Child deliverables require the recorded workspace.")
@@ -70,7 +71,7 @@ async def export_child_artifacts(
 
 
 def read_child_artifact(child: ChildRun, store: ArtifactStore, entry: ChildArtifact) -> str:
-    """Read and verify the complete UTF-8 payload listed in a child's manifest."""
+    """读取并验证子运行交付清单列出的完整 UTF-8 内容。"""
     metadata, text = store.read_all(entry.artifact_id, key=entry.path)
     content = text.encode("utf-8")
     if (
@@ -83,6 +84,7 @@ def read_child_artifact(child: ChildRun, store: ArtifactStore, entry: ChildArtif
 
 
 def _check_existing(parent: int, name: str, content: bytes) -> None:
+    """检查已存在目标的类型及字节内容，判断能否复用。"""
     expected = os.stat(name, dir_fd=parent, follow_symlinks=False)
     if not stat.S_ISREG(expected.st_mode) or expected.st_size != len(content):
         raise ArtifactError("Destination already exists with different contents.")
@@ -95,7 +97,7 @@ def _check_existing(parent: int, name: str, content: bytes) -> None:
 
 
 def apply_child_artifact(workdir: Path, destination: str, content: str) -> bool:
-    """Create an explicit file in an existing directory. Identical contents are a no-op."""
+    """在已有目录中创建指定文件。目标内容相同时无需写入。"""
     parts = _artifact_parts(destination)
     if os.name != "posix":
         raise ArtifactError("Applying child deliverables requires POSIX workspace file operations.")

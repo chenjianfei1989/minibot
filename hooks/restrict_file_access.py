@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restrict file access to working directory only."""
+"""将文件访问限制在工作目录内。"""
 
 import json
 import os
@@ -9,31 +9,31 @@ from pathlib import Path
 
 
 def extract_paths_from_bash(command: str) -> list[str]:
-    """Extract potential file paths from a bash command."""
+    """从 Bash 命令中提取可能的文件路径。"""
     paths = []
 
-    # Try to tokenize the command
+    # 尝试对命令进行分词。
     try:
         tokens = shlex.split(command)
     except ValueError:
-        # If shlex fails, fall back to simple split
+        # 如果 shlex 解析失败，回退到简单的字符串拆分。
         tokens = command.split()
 
     for token in tokens:
-        # Skip flags
+        # 跳过命令行选项。
         if token.startswith("-"):
             continue
-        # Absolute paths
+        # 处理绝对路径。
         if token.startswith("/"):
             paths.append(token)
-        # Relative paths with parent directory traversal
+        # 处理包含上级目录跳转的相对路径。
         elif ".." in token:
             paths.append(token)
-        # Home directory expansion
+        # 展开用户主目录。
         elif token.startswith("~"):
             paths.append(os.path.expanduser(token))
 
-    # Also check for redirections: > /path, >> /path, < /path
+    # 同时检查重定向，例如 > /path、>> /path 和 < /path。
     redirect_pattern = r'[<>]{1,2}\s*([/~][^\s;|&]*|[^\s;|&]*\.\.+[^\s;|&]*)'
     for match in re.finditer(redirect_pattern, command):
         path = match.group(1).strip()
@@ -45,10 +45,10 @@ def extract_paths_from_bash(command: str) -> list[str]:
 
 
 def is_path_within_workdir(file_path: str, workdir: str) -> tuple[bool, str]:
-    """Check if a path is within the working directory."""
+    """检查指定路径是否位于工作目录内。"""
     workdir_path = Path(workdir).resolve()
 
-    # Handle relative paths
+    # 处理相对路径。
     if not Path(file_path).is_absolute():
         target_path = (workdir_path / file_path).resolve()
     else:
@@ -66,7 +66,7 @@ def main():
     tool_args_raw = os.environ.get("HOOK_TOOL_ARGS", "{}")
     workdir = os.environ.get("HOOK_WORKDIR", "")
 
-    # Tools that need file access checking
+    # 列出需要检查文件访问的工具。
     file_tools = {"read_file", "write_file", "edit_file", "bash"}
     if tool_name not in file_tools:
         print(json.dumps({"success": True}))
@@ -80,7 +80,7 @@ def main():
 
     paths_to_check = []
 
-    # Determine the file path(s) to check
+    # 确定需要检查的文件路径。
     if tool_name in ("read_file", "write_file", "edit_file"):
         file_path = args.get("path") or args.get("file_path", "")
         if file_path:
@@ -94,7 +94,7 @@ def main():
         print(json.dumps({"success": True}))
         return
 
-    # Check all paths
+    # 检查所有路径。
     for path in paths_to_check:
         is_valid, resolved_path = is_path_within_workdir(path, workdir)
         if not is_valid:

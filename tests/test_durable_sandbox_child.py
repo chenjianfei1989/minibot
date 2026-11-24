@@ -1,4 +1,4 @@
-"""Kill and restart the SDK with the real Docker workspace and a scripted provider."""
+"""在实际 Docker 工作区和脚本化模型服务下终止并重启 SDK。"""
 
 import asyncio
 import json
@@ -155,7 +155,7 @@ def docker(*args):
 
 def child_container(child, bot):
     store = bot.agent.run_store.for_child(child)
-    # This snapshot is useful while a different process holds the execution lock.
+    # 另一进程持有执行锁期间，可使用此快照检查已经提交的状态。
     return RunJournal(store, child.run.session_id, child.run.run_id).pending_container()
 
 

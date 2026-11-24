@@ -1,4 +1,4 @@
-"""Configuration management for Minibot."""
+"""MiniBot 配置管理。"""
 
 from .schema import Config, BashConfig, WorkspaceConfig, LLMConfig, ToolsConfig, HooksConfig, MCPConfig, TeamsConfig, SubagentsConfig, RuntimeBudgetConfig, ToolPermissionsConfig, ContextOffloadingConfig
 from .settings import load_config, get_config

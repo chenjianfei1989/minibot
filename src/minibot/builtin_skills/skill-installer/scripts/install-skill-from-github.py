@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install one or more skills from a GitHub repo path into Minibot."""
+"""将 GitHub 仓库指定路径下的一个或多个技能安装到 MiniBot。"""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ class Source:
 
 
 class InstallError(Exception):
-    """Raised when install preparation or copying fails."""
+    """安装准备或复制失败时抛出。"""
 
 
 def _tmp_root() -> str:

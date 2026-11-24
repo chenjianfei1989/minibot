@@ -1,4 +1,4 @@
-"""Verify journal and replay semantics against real process termination."""
+"""通过实际终止进程验证日志与重放行为。"""
 
 import asyncio
 from dataclasses import replace

@@ -1,4 +1,4 @@
-"""Tests for /agent command handler and AgentRegistry extensions."""
+"""测试 /agent 命令处理器与 AgentRegistry 扩展。"""
 
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -8,7 +8,7 @@ import pytest
 from src.minibot.subagents.registry import AgentRegistry, AgentType
 
 
-# --- AgentRegistry ---
+# --- AgentRegistry 注册表 ---
 
 
 def test_enable_disable_agent():
@@ -68,7 +68,7 @@ def test_get_descriptions_excludes_disabled():
     assert "explore" in desc
 
 
-# --- handle_agent_cmd ---
+# --- handle_agent_cmd 命令处理 ---
 
 
 @pytest.mark.asyncio

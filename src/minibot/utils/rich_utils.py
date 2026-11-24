@@ -1,4 +1,4 @@
-"""Rich availability and shared console."""
+"""管理 Rich 可用性与共享控制台。"""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def get_console() -> "Console":
         return _CONSOLE
     from rich.console import Console
 
-    # Avoid soft_wrap=True here; it disables wrapping/cropping and can cause
-    # Rich panels/markdown to drop content on long lines.
+    # 此处不要启用 soft_wrap=True，因为它会禁用换行和裁剪，
+    # 可能导致 Rich 面板或 Markdown 丢失长行内容。
     _CONSOLE = Console(highlight=False, soft_wrap=False, emoji=False, width=desired_width)
     return _CONSOLE

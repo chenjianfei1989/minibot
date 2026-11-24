@@ -1,4 +1,4 @@
-"""Hook manager for registering and triggering hooks."""
+"""负责注册和触发钩子的管理器。"""
 
 from pathlib import Path
 from typing import Any
@@ -9,15 +9,16 @@ from .executor import HookExecutor
 
 
 class HookManager:
-    """Manages hook registration and execution."""
+    """管理钩子的注册与执行。"""
 
     def __init__(self, config: HooksConfig, workdir: Path):
+        """根据配置建立钩子执行器，并按事件整理已配置的钩子。"""
         self.config = config
         self.workdir = workdir
         self.enabled = config.enabled
         self.executor = HookExecutor(workdir)
 
-        # Organize hooks by event
+        # 按事件组织钩子。
         self._hooks: dict[HookEvent, list[HookDefinition]] = {}
         for hook in config.hooks:
             if hook.enabled:
@@ -27,7 +28,7 @@ class HookManager:
                 self._hooks[event].append(hook)
 
     def get_hooks(self, event: HookEvent) -> list[HookDefinition]:
-        """Get all hooks for an event."""
+        """获取某个事件对应的所有钩子。"""
         return self._hooks.get(event, [])
 
     async def trigger(
@@ -35,7 +36,7 @@ class HookManager:
         event: HookEvent,
         context: HookContext,
     ) -> list[HookResult]:
-        """Trigger all hooks for an event."""
+        """触发某个事件对应的所有钩子。"""
         if not self.enabled:
             return []
 
@@ -52,7 +53,7 @@ class HookManager:
             )
             results.append(result)
 
-            # If any hook blocks, stop processing
+            # 任一钩子阻止操作时，停止继续处理。
             if result.blocked:
                 break
 
@@ -63,7 +64,7 @@ class HookManager:
         tool_name: str,
         tool_args: dict[str, Any],
     ) -> tuple[bool, str | None]:
-        """Trigger pre-tool-call hooks. Returns (blocked, reason)."""
+        """触发工具调用前的钩子，返回 (blocked, reason)。"""
         from .events import ToolCallContext
 
         context = ToolCallContext(
@@ -89,7 +90,7 @@ class HookManager:
         tool_args: dict[str, Any],
         tool_result: str,
     ) -> None:
-        """Trigger post-tool-call hooks."""
+        """触发工具调用后的钩子。"""
         from .events import ToolCallContext
 
         context = ToolCallContext(
@@ -106,7 +107,7 @@ class HookManager:
                 raise RuntimeError(result.error or result.block_reason or "Post-tool hook failed")
 
     async def trigger_session_start(self, session_id: str = "") -> list[HookResult]:
-        """Trigger session start hooks."""
+        """触发会话启动钩子。"""
         from .events import SessionContext
 
         context = SessionContext(
@@ -118,7 +119,7 @@ class HookManager:
         return await self.trigger(HookEvent.SESSION_START, context)
 
     async def trigger_session_end(self, session_id: str = "") -> list[HookResult]:
-        """Trigger session end hooks."""
+        """触发会话结束钩子。"""
         from .events import SessionContext
 
         context = SessionContext(
@@ -135,7 +136,7 @@ class HookManager:
         member_id: str,
         detail: str = "",
     ) -> list[HookResult]:
-        """Trigger teammate idle hooks."""
+        """触发队友进入空闲状态时的钩子。"""
         from .events import TeamEventContext
 
         context = TeamEventContext(
@@ -152,7 +153,7 @@ class HookManager:
         task_id: str,
         detail: str = "",
     ) -> list[HookResult]:
-        """Trigger task completed hooks."""
+        """触发任务完成钩子。"""
         from .events import TeamEventContext
 
         context = TeamEventContext(

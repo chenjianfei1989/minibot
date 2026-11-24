@@ -1,4 +1,4 @@
-"""Verify the context presented to a model at the Agent and SDK boundaries."""
+"""验证 Agent 和 SDK 边界处提供给模型的上下文。"""
 
 import json
 from types import SimpleNamespace

@@ -1,4 +1,4 @@
-"""Minibot entry point."""
+"""MiniBot 启动入口。"""
 
 from minibot.main import main
 

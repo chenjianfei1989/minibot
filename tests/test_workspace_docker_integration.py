@@ -1,4 +1,4 @@
-"""Exercise the same mounted workspace through the SDK, shell, and file tools."""
+"""通过 SDK、Shell 和文件工具操作同一个挂载工作区。"""
 
 import asyncio
 from dataclasses import replace

@@ -1,4 +1,4 @@
-"""SQLModel table definitions for memory v2."""
+"""第二版记忆存储使用的 SQLModel 表定义。"""
 
 from __future__ import annotations
 

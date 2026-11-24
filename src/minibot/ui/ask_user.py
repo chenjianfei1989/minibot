@@ -1,4 +1,4 @@
-"""CLI ask-user interaction helpers."""
+"""CLI 中与用户问答交互的辅助函数。"""
 
 from __future__ import annotations
 

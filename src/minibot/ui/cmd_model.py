@@ -1,4 +1,4 @@
-"""/model command handler — interactive model configuring."""
+"""/model 命令处理器，用于交互式配置模型。"""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ async def handle_model_cmd(
     app_home: Path,
     prompt_fn: Callable[[str, str], Coroutine[Any, Any, str]],
 ) -> None:
-    """Dispatch /model subcommands."""
+    """分发 /model 子命令。"""
     sub = raw_args.strip().split()[0].lower() if raw_args.strip() else ""
 
     if sub == "config" or sub == "":
@@ -32,7 +32,7 @@ async def _interactive_config(
     app_home: Path,
     prompt_fn: Callable[[str, str], Coroutine[Any, Any, str]]
 ) -> None:
-    """Show interactive arrow-key selector for .env model configurations."""
+    """显示用于选择 .env 模型配置项的方向键交互界面。"""
     if dotenv_values is None or set_key is None:
         print_system("Error: python-dotenv is not installed. Unable to manage .env file.")
         return
@@ -46,7 +46,7 @@ async def _interactive_config(
     keys_to_manage = ["OPENAI_BASE_URL", "OPENAI_API_KEY", "MODEL_ID"]
 
     while True:
-        # Load current values
+        # 加载当前值。
         current_values = dotenv_values(env_path)
 
         items = [{"key": k, "value": current_values.get(k, "")} for k in keys_to_manage]
@@ -55,7 +55,7 @@ async def _interactive_config(
             arrow = "▸ " if idx == cur else "  "
             val = item["value"]
             if item["key"] == "OPENAI_API_KEY" and val and len(val) > 10:
-                val = val[:5] + "..." + val[-3:]  # Mask API key visually
+                val = val[:5] + "..." + val[-3:]  # 在界面上遮盖 API 密钥。
             elif not val:
                 val = "<not set>"
             return f"{arrow}{item['key']:<16} = {val}"
@@ -63,7 +63,7 @@ async def _interactive_config(
         selected = await interactive_choice(items, render_fn=_render)
         
         if selected is None:
-            # User pressed q or Esc
+            # 用户按下了 q 或 Esc。
             break
             
         key = selected["key"]

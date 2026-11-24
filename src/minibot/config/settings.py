@@ -1,4 +1,4 @@
-"""Configuration loading and management."""
+"""配置加载与管理。"""
 
 import os
 import shutil
@@ -130,7 +130,7 @@ servers: []
 
 
 def _resolve_env_vars(value: Any, env_defaults: dict[str, str] | None = None) -> Any:
-    """Resolve environment variable references in config values."""
+    """解析配置值中的环境变量引用。"""
     if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
         env_var = value[2:-1]
         default = None
@@ -148,6 +148,7 @@ def _resolve_env_vars(value: Any, env_defaults: dict[str, str] | None = None) ->
 
 
 def _read_yaml(path: Path) -> dict:
+    """按 UTF-8 读取 YAML 并解析其内容。"""
     if not path.exists():
         return {}
     with open(path, encoding="utf-8") as f:
@@ -155,7 +156,7 @@ def _read_yaml(path: Path) -> dict:
 
 
 def _load_yaml(path: Path, env_defaults: dict[str, str] | None = None) -> dict:
-    """Load a YAML file and resolve environment variables."""
+    """加载 YAML 文件并解析环境变量。"""
     return _resolve_env_vars(_read_yaml(path), env_defaults)
 
 
@@ -163,7 +164,7 @@ def _load_yaml(path: Path, env_defaults: dict[str, str] | None = None) -> dict:
 
 
 def _resolve_path_value(value: str | Path, base_dir: Path) -> Path:
-    """Resolve a path value against a base directory."""
+    """以指定基础目录为基准解析路径值。"""
     path = Path(value).expanduser()
     if path.is_absolute():
         return path.resolve()
@@ -176,7 +177,7 @@ def _resolve_config_path(
     value: Any,
     base_dir: Path,
 ) -> Path:
-    """Resolve a configured path, rejecting unset placeholders."""
+    """解析配置的路径，拒绝未赋值的占位符。"""
     if value is None:
         raise ValueError(
             f"Configuration value '{key}' resolved to None. "
@@ -190,7 +191,7 @@ def _resolve_config_path(
 
 
 def _load_env_files(app_home: Path, project_root: Path | None = None) -> dict[str, str]:
-    """Load .env defaults from global app home, creating from .env.example if missing."""
+    """从全局应用主目录加载 .env 默认值，文件缺失时根据 .env.example 创建。"""
     merged: dict[str, str] = {}
     path = app_home / ".env"
 
@@ -218,12 +219,12 @@ def _load_env_files(app_home: Path, project_root: Path | None = None) -> dict[st
 
 
 def _bootstrap_global_config(app_home: Path, project_root: Path | None = None) -> None:
-    """Create global config files when missing."""
+    """在缺失时创建全局配置文件。"""
     global_config_dir = (app_home / "config").resolve()
     try:
         global_config_dir.mkdir(parents=True, exist_ok=True)
     except OSError:
-        # Read-only app home
+        # 应用主目录为只读。
         return
 
     files: list[tuple[str, str]] = [
@@ -245,7 +246,7 @@ def _bootstrap_global_config(app_home: Path, project_root: Path | None = None) -
             else:
                 global_file.write_text(template.rstrip() + "\n", encoding="utf-8")
         except OSError:
-            # Best-effort bootstrap: continue loading with whatever config is readable.
+            # 尽力完成初始化，继续使用能够读取的配置。
             continue
 
 
@@ -253,7 +254,7 @@ def _bootstrap_global_config(app_home: Path, project_root: Path | None = None) -
 
 
 def _parse_llm_config(data: dict, env_defaults: dict[str, str]) -> LLMConfig:
-    """Parse LLM configuration."""
+    """解析 LLM 配置。"""
     return LLMConfig(
         base_url=(
             data.get("base_url")
@@ -279,7 +280,7 @@ def _parse_llm_config(data: dict, env_defaults: dict[str, str]) -> LLMConfig:
 
 
 def _parse_hooks_config(data: dict | None, hooks_dir: Path) -> HooksConfig:
-    """Parse hooks configuration."""
+    """解析钩子配置。"""
     if data is None:
         data = {}
     hooks = []
@@ -299,7 +300,7 @@ def _parse_hooks_config(data: dict | None, hooks_dir: Path) -> HooksConfig:
 
 
 def _parse_mcp_config(data: dict | None) -> MCPConfig:
-    """Parse MCP configuration."""
+    """解析 MCP 配置。"""
     if data is None:
         data = {}
     servers = []
@@ -322,7 +323,7 @@ def _parse_mcp_config(data: dict | None) -> MCPConfig:
 
 
 def _parse_memory_config(data: dict | None, app_home: Path) -> MemoryConfig:
-    """Parse memory configuration."""
+    """解析记忆配置。"""
     if data is None:
         data = {}
     raw_memory_dir = data.get("memory_dir", "memory")
@@ -343,7 +344,7 @@ def _parse_memory_config(data: dict | None, app_home: Path) -> MemoryConfig:
 
 
 def _parse_teams_config(data: dict | None) -> TeamsConfig:
-    """Parse teams configuration."""
+    """解析团队配置。"""
     if data is None:
         data = {}
     return TeamsConfig(
@@ -358,7 +359,7 @@ def _parse_teams_config(data: dict | None) -> TeamsConfig:
 
 
 def _parse_subagents_config(data: dict | None) -> SubagentsConfig:
-    """Parse subagents configuration."""
+    """解析子 Agent 配置。"""
     if data is None:
         return SubagentsConfig()
     agents: dict[str, SubagentConfig] = {}
@@ -376,7 +377,7 @@ def _parse_subagents_config(data: dict | None) -> SubagentsConfig:
 
 
 def _parse_session_config(data: dict | None, app_home: Path) -> SessionConfig:
-    """Parse session configuration."""
+    """解析会话配置。"""
     if data is None:
         data = {}
     raw_dir = data.get("sessions_dir", "sessions")
@@ -392,7 +393,7 @@ def load_config(
     app_home: Path | None = None,
     project_root: Path | None = None,
 ) -> Config:
-    """Load configuration from files and environment variables."""
+    """从文件与环境变量加载配置。"""
     global _config
 
     workdir = (workdir or Path.cwd()).resolve()
@@ -472,6 +473,7 @@ def load_config(
 
 
 def _parse_workspace_config(data: Any, *, default_backend: str = "local") -> WorkspaceConfig:
+    """从 YAML 配置构造并校验工作区后端设置。"""
     if not isinstance(data, dict):
         raise ValueError("workspace must be a mapping")
     try:
@@ -481,6 +483,7 @@ def _parse_workspace_config(data: Any, *, default_backend: str = "local") -> Wor
 
 
 def _parse_context_offloading(data: Any) -> ContextOffloadingConfig:
+    """从 YAML 配置解析大工具输出的卸载策略。"""
     if not isinstance(data, dict):
         raise ValueError("context_offloading must be a mapping")
     try:
@@ -490,6 +493,7 @@ def _parse_context_offloading(data: Any) -> ContextOffloadingConfig:
 
 
 def _parse_runtime_budget(data: Any) -> RuntimeBudgetConfig:
+    """从 YAML 配置解析单个执行片段的运行预算。"""
     if not isinstance(data, dict):
         raise ValueError("runtime_budget must be a mapping")
     try:
@@ -499,6 +503,7 @@ def _parse_runtime_budget(data: Any) -> RuntimeBudgetConfig:
 
 
 def _parse_tool_permissions(data: Any) -> ToolPermissionsConfig:
+    """从 YAML 配置解析工具权限、审批模式和规则。"""
     if not isinstance(data, dict):
         raise ValueError("tool_permissions must be a mapping")
     try:
@@ -508,6 +513,7 @@ def _parse_tool_permissions(data: Any) -> ToolPermissionsConfig:
 
 
 def _parse_tools_config(data: Any) -> ToolsConfig:
+    """从 YAML 配置载入工具开关、超时和 Bash 后端设置。"""
     if not isinstance(data, dict):
         raise ValueError("tools must be a mapping")
     bash = data.get("bash", {})
@@ -524,7 +530,7 @@ def _parse_tools_config(data: Any) -> ToolsConfig:
 
 
 def get_config() -> Config:
-    """Get the current configuration, loading if necessary."""
+    """获取当前配置，必要时先加载。"""
     global _config
     if _config is None:
         _config = load_config()

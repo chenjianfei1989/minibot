@@ -1,4 +1,4 @@
-"""Subagent executor."""
+"""子 Agent 执行器。"""
 
 import sys
 import time
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class SubagentExecutor:
-    """Executes subagent tasks."""
+    """执行子 Agent 任务。"""
 
     def __init__(
         self,
@@ -42,6 +42,7 @@ class SubagentExecutor:
         budget_limits: RuntimeBudgetConfig | None = None,
         llm_config: LLMConfig | None = None,
     ):
+        """绑定模型客户端、注册表、钩子、工作目录和技能加载器。"""
         self.client = client
         self.tool_registry = tool_registry
         self.agent_registry = agent_registry
@@ -52,7 +53,7 @@ class SubagentExecutor:
         self.llm_config = llm_config or LLMConfig()
 
     def _get_tools_for_agent(self, agent_type: str) -> list[dict]:
-        """Get tool definitions for an agent type."""
+        """获取某种 Agent 类型可用的工具定义。"""
         agent = self.agent_registry.get(agent_type)
         if agent is None:
             return []
@@ -79,7 +80,7 @@ class SubagentExecutor:
         *,
         trace: RunTrace | None = None,
     ) -> str:
-        """Execute a subagent task."""
+        """执行一个子 Agent 任务。"""
         agent = self.agent_registry.get(agent_type)
         if agent is None:
             return f"Error: Unknown agent type '{agent_type}'"
@@ -108,6 +109,7 @@ class SubagentExecutor:
         agent: AgentType,
         child: SubagentTrace | None,
     ) -> str:
+        """为子任务组装提示词与工具范围，再运行模型与工具循环。"""
         skills_section = ""
         if agent.skills_enabled and self.skill_loader:
             skills_desc = self.skill_loader.get_descriptions()
@@ -152,6 +154,7 @@ Complete the task and return a clear, concise summary."""
                 console = None
 
         def _fallback_status_line(done: bool = False) -> None:
+            """生成没有 Rich 渲染时使用的执行进度状态行。"""
             elapsed = time.time() - start
             suffix = (
                 f" - done ({tool_count} tools, {elapsed:.1f}s)\n"

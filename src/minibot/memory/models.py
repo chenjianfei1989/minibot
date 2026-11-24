@@ -1,4 +1,4 @@
-"""Structured memory domain models."""
+"""结构化记忆的领域模型。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 @dataclass
 class MemoryNamespace:
-    """One isolated memory space, typically representing a novel."""
+    """独立的记忆空间，通常代表一本小说。"""
 
     id: str
     slug: str
@@ -17,7 +17,7 @@ class MemoryNamespace:
 
 @dataclass
 class MemoryNode:
-    """A memory tree node."""
+    """记忆树中的一个节点。"""
 
     id: str
     namespace_id: str

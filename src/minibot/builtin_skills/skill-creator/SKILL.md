@@ -1,81 +1,35 @@
 ---
 name: skill-creator
-description: Design or update Minibot skills. Use when the user wants a new skill, wants to improve an existing skill, or needs help structuring SKILL.md, scripts, references, or assets.
+description: 设计或更新 MiniBot 技能。适用于创建新技能、改进现有技能，或组织 SKILL.md、脚本、参考资料和资源文件。
 ---
 
-# Skill Creator
+# 创建技能
 
-Use this skill when creating or revising a Minibot skill.
+创建或修改 MiniBot 技能时使用本技能。目标是用简洁的说明补充 Agent 难以自行推断的工作流程。
 
-## Goal
+## 辅助脚本
 
-Create a compact skill that gives the agent workflow knowledge it would not reliably infer on its own.
+- `scripts/init_skill.py` 创建技能目录和初始 `SKILL.md`。默认使用用户的 MiniBot 技能目录。可选创建 `scripts/`、`references/` 和 `assets/`，并放入示例文件。
+- `scripts/quick_validate.py` 对技能目录进行结构校验。在完成新建或编辑前运行。
 
-## Helper scripts
+## 技能目录
 
-- `scripts/init_skill.py`
-  - Creates a new skill directory with a starter `SKILL.md`.
-  - Defaults to the user's Minibot skills directory, not the current repo.
-  - Can optionally create `scripts/`, `references/`, and `assets/`.
-  - Can also drop example files into those directories for faster bootstrapping.
-- `scripts/quick_validate.py`
-  - Performs a lightweight structural validation of a skill directory.
-  - Use it before declaring a new or edited skill complete.
+- `SKILL.md` 必须包含 `name` 和 `description` 头部元数据。
+- 可选的 `scripts/` 存放可重复执行的辅助脚本。
+- 可选的 `references/` 存放按需加载的参考资料。
+- 可选的 `assets/` 存放模板或输出资源。
 
-## Skill anatomy
+## 编写与验证
 
-Each skill is a folder:
+1. 先查看附近的技能，沿用一致的命名和布局。
+2. 默认在用户技能目录创建。用户明确需要项目共享技能时，使用项目的 `skills/`。
+3. 确定触发技能的任务，用具体的 `description` 写清楚这些场景。
+4. 在 `SKILL.md` 中保留简短、按步骤编排的核心流程。将长资料放入 `references/`。需要确定性行为或经常重复编写同一代码时，使用 `scripts/`。
+5. 用 `/skills list` 或 `/api/skills` 确认技能可见，再运行 `scripts/quick_validate.py <skill_dir>`。
+6. 用一个实际场景的提示词验证触发和执行，改进含糊的说明。
 
-```text
-skill-name/
-├── SKILL.md
-├── scripts/      # optional deterministic helpers
-├── references/   # optional docs loaded only when needed
-└── assets/       # optional templates or output resources
-```
+每个技能专注一套流程。采用直接指令、明确的验证步骤和稳定的辅助脚本命名。完成前核对头部元数据、触发描述、引用文件及当前工具环境是否支持这套流程。
 
-`SKILL.md` must include frontmatter with:
+## 更新现有技能
 
-- `name`
-- `description`
-
-## Writing rules
-
-- Keep `description` concrete so the loader can match the skill to user intent.
-- Keep the body short and procedural.
-- Assume the model is already generally capable; only include task-specific guidance.
-- Put long reference material in `references/`, not in `SKILL.md`.
-- Use scripts when deterministic behavior matters or the same code would otherwise be rewritten repeatedly.
-
-## Recommended creation workflow
-
-1. Inspect nearby skills first so naming and structure stay consistent.
-2. Default new skills to the user skills directory. Only write to a project `skills/` folder when the user explicitly wants a repo-scoped shared skill.
-3. Define the user tasks that should trigger the skill.
-4. Write a precise `description` that names those tasks clearly.
-5. Put only the core workflow in `SKILL.md`.
-6. Add `references/` or `scripts/` only when they materially reduce ambiguity or repetition.
-7. Verify the skill appears in `/skills list` or `/api/skills`.
-8. Run `scripts/quick_validate.py <skill_dir>`.
-9. Test the skill on one realistic prompt and tighten unclear instructions.
-
-## Good defaults
-
-- Prefer one skill per focused workflow.
-- Prefer direct instructions over long theory.
-- Prefer explicit verification steps.
-- Prefer stable file layouts and predictable helper script names.
-
-## Updating an existing skill
-
-- Preserve the skill name unless the trigger intent changes.
-- Remove stale guidance instead of appending contradictory notes.
-- If the skill supports multiple variants, keep selection guidance in `SKILL.md` and move variant details into separate reference files.
-
-## Validation checklist
-
-- The frontmatter is valid.
-- The description is specific enough to trigger at the right time.
-- The body stays concise.
-- Any referenced files actually exist.
-- The workflow can be followed with Minibot's current tools and environment.
+除非触发意图已变，否则沿用原技能名。删除过时说明，避免加入互相矛盾的指令。技能有多个变体时，在 `SKILL.md` 说明如何选择，并把各变体细节放入独立参考文件。

@@ -1,4 +1,4 @@
-"""Tool registry for managing available tools."""
+"""管理可用工具的工具注册表。"""
 
 from typing import Any
 
@@ -8,50 +8,51 @@ from .result import ToolOutcome
 
 
 class ToolRegistry:
-    """Registry for managing and accessing tools."""
+    """管理和访问工具的注册表。"""
 
     def __init__(self):
+        """初始化工具名称映射及注册限制状态。"""
         self._tools: dict[str, BaseTool] = {}
         self._sealed = False
 
     def register(self, tool: BaseTool) -> None:
-        """Register a tool."""
+        """注册一个工具。"""
         if self._sealed:
             raise ValueError("Host tools are unavailable in a restricted Docker workspace")
         self._tools[tool.name] = tool
 
     def seal(self) -> None:
-        """Prevent additions once the permitted tools have been registered."""
+        """在允许的工具全部注册后，禁止继续添加。"""
         self._sealed = True
 
     def unregister(self, name: str) -> None:
-        """Unregister a tool by name."""
+        """按名称取消注册工具。"""
         self._tools.pop(name, None)
 
     def get(self, name: str) -> BaseTool | None:
-        """Get a tool by name."""
+        """按名称获取工具。"""
         return self._tools.get(name)
 
     def get_all(self) -> list[BaseTool]:
-        """Get all registered tools."""
+        """获取全部已注册工具。"""
         return list(self._tools.values())
 
     def get_definitions(self) -> list[dict[str, Any]]:
-        """Get all tool definitions for API."""
+        """获取提供给 API 的全部工具定义。"""
         return [tool.to_dict() for tool in self._tools.values()]
 
     def filter_by_names(self, names: list[str] | str) -> list[BaseTool]:
-        """Filter tools by names. Use '*' for all tools."""
+        """按名称筛选工具。使用 '*' 选中全部工具。"""
         if names == "*":
             return self.get_all()
         return [t for t in self._tools.values() if t.name in names]
 
     async def execute(self, name: str, args: dict[str, Any]) -> str:
-        """Execute a tool through the compatible text API."""
+        """通过兼容文本接口执行工具。"""
         return (await self.execute_result(name, args)).text
 
     async def execute_result(self, name: str, args: dict[str, Any]) -> ToolOutcome:
-        """Execute a tool without discarding its outcome or cancellation."""
+        """执行工具并保留其执行结果与取消信号。"""
         tool = self.get(name)
         if tool is None:
             return ToolOutcome(f"Unknown tool: {name}", "unknown_tool")
@@ -80,7 +81,9 @@ class ToolRegistry:
             return ToolOutcome(f"Error: {exc}", "error")
 
     def __contains__(self, name: str) -> bool:
+        """判断给定名称是否已注册。"""
         return name in self._tools
 
     def __len__(self) -> int:
+        """返回已注册工具的数量。"""
         return len(self._tools)

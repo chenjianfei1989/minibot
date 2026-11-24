@@ -1,4 +1,4 @@
-"""HTTP API models for the Minibot server."""
+"""MiniBot 服务端 HTTP API 模型。"""
 
 from __future__ import annotations
 

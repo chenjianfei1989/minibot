@@ -1,4 +1,4 @@
-"""LLM Client wrapper."""
+"""LLM 客户端封装。"""
 
 import os
 from typing import Any
@@ -7,7 +7,7 @@ from openai import AsyncOpenAI, OpenAI
 
 
 class LLMClient:
-    """Wrapper for LLM API client."""
+    """封装 LLM API 客户端。"""
 
     def __init__(
         self,
@@ -15,6 +15,7 @@ class LLMClient:
         api_key: str | None = None,
         model: str | None = None,
     ):
+        """用指定的端点、凭证和模型初始化同步与异步客户端。"""
         self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model or os.getenv("MODEL_ID", "gpt-4.1-mini")
@@ -30,6 +31,7 @@ class LLMClient:
         self._closed = False
 
     def _reasoning_kwargs(self, reasoning_effort: str | None) -> dict[str, Any]:
+        """按服务商要求转换推理强度参数。"""
         effort = str(reasoning_effort or "").strip().lower()
         if effort not in {"low", "medium", "high"}:
             return {}
@@ -40,6 +42,7 @@ class LLMClient:
 
     @staticmethod
     def _is_reasoning_effort_unsupported_error(exc: Exception) -> bool:
+        """判断 API 异常是否表示服务端不接受推理强度参数。"""
         text = str(exc).lower()
         param_markers = (
             "reasoning_effort",
@@ -72,7 +75,7 @@ class LLMClient:
         stream: bool = False,
         reasoning_effort: str | None = None,
     ) -> dict[str, Any]:
-        """Build request kwargs for chat completions."""
+        """构建聊天补全请求的关键字参数。"""
         chat_messages = []
         if system:
             chat_messages.append({"role": "system", "content": system})
@@ -97,6 +100,7 @@ class LLMClient:
         return kwargs
 
     def _create_sync_with_fallback(self, kwargs: dict[str, Any]) -> Any:
+        """发起同步请求，在服务端明确不支持推理参数时省略该参数重试。"""
         try:
             return self._sync_client.chat.completions.create(**kwargs)
         except Exception as exc:
@@ -112,6 +116,7 @@ class LLMClient:
             return self._sync_client.chat.completions.create(**fallback_kwargs)
 
     async def _create_async_with_fallback(self, kwargs: dict[str, Any]) -> Any:
+        """发起异步请求，在服务端明确不支持推理参数时省略该参数重试。"""
         try:
             return await self._async_client.chat.completions.create(**kwargs)
         except Exception as exc:
@@ -134,7 +139,7 @@ class LLMClient:
         max_tokens: int = 8000,
         reasoning_effort: str | None = None,
     ) -> Any:
-        """Create a message with the LLM (deprecated sync compatibility path)."""
+        """使用 LLM 创建消息，供已弃用的同步兼容路径使用。"""
         kwargs = self._build_kwargs(
             model=self.model,
             messages=messages,
@@ -153,7 +158,7 @@ class LLMClient:
         max_tokens: int = 8000,
         reasoning_effort: str | None = None,
     ) -> Any:
-        """Create a message with the async OpenAI client."""
+        """通过异步 OpenAI 客户端创建消息。"""
         kwargs = self._build_kwargs(
             model=self.model,
             messages=messages,
@@ -172,7 +177,7 @@ class LLMClient:
         max_tokens: int = 8000,
         reasoning_effort: str | None = None,
     ) -> Any:
-        """Create a streaming message with the async OpenAI client."""
+        """通过异步 OpenAI 客户端创建流式响应。"""
         kwargs = self._build_kwargs(
             model=self.model,
             messages=messages,
@@ -185,7 +190,7 @@ class LLMClient:
         return await self._create_async_with_fallback(kwargs)
 
     async def close(self) -> None:
-        """Close underlying async client resources."""
+        """关闭底层异步客户端占用的资源。"""
         if self._closed:
             return
         if hasattr(self._sync_client, "close"):

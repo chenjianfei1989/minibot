@@ -1,4 +1,4 @@
-"""Helpers for normalizing persisted session messages."""
+"""用于规范化持久化会话消息的辅助函数。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 
 def normalize_tool_calls(value: Any) -> list[dict[str, Any]]:
-    """Return tool calls in OpenAI chat-completions message shape."""
+    """以 OpenAI 聊天补全消息的结构返回工具调用。"""
     if not isinstance(value, list):
         return []
 
@@ -43,7 +43,7 @@ def normalize_tool_calls(value: Any) -> list[dict[str, Any]]:
 
 
 def normalize_session_message(message: dict[str, Any]) -> dict[str, Any]:
-    """Normalize persisted message fields needed for runtime replay."""
+    """规范化恢复执行所需的持久化消息字段。"""
     normalized = dict(message)
     if "tool_calls" in normalized:
         tool_calls = normalize_tool_calls(normalized.get("tool_calls"))

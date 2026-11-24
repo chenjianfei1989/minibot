@@ -1,4 +1,4 @@
-"""Search helpers for memory v2."""
+"""第二版记忆存储的搜索辅助函数。"""
 
 from __future__ import annotations
 
@@ -17,10 +17,12 @@ class SearchResult:
 
 
 def normalize_query(query: str) -> str:
+    """统一查询的大小写与空白，便于计算匹配。"""
     return " ".join(query.strip().lower().split())
 
 
 def rank_search_results(query: str, documents: list[dict]) -> list[SearchResult]:
+    """对候选记忆文档计算相关性，并返回排序后的命中结果。"""
     normalized = normalize_query(query)
     ranked: list[tuple[int, SearchResult]] = []
     for doc in documents:

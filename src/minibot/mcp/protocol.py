@@ -1,4 +1,4 @@
-"""MCP protocol data types."""
+"""MCP 协议数据类型。"""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -6,7 +6,7 @@ from typing import Any
 
 @dataclass
 class MCPTool:
-    """MCP tool definition."""
+    """MCP 工具定义。"""
 
     name: str
     description: str
@@ -16,7 +16,7 @@ class MCPTool:
 
 @dataclass
 class MCPToolCall:
-    """MCP tool call request."""
+    """MCP 工具调用请求。"""
 
     name: str
     arguments: dict[str, Any]
@@ -24,7 +24,7 @@ class MCPToolCall:
 
 @dataclass
 class MCPToolResult:
-    """MCP tool call result."""
+    """MCP 工具调用结果。"""
 
     content: str
     is_error: bool = False
@@ -32,7 +32,7 @@ class MCPToolResult:
 
 @dataclass
 class MCPResource:
-    """MCP resource definition."""
+    """MCP 资源定义。"""
 
     uri: str
     name: str
@@ -43,7 +43,7 @@ class MCPResource:
 
 @dataclass
 class MCPCapabilities:
-    """Server capabilities."""
+    """服务端能力。"""
 
     tools: bool = False
     resources: bool = False
@@ -52,7 +52,7 @@ class MCPCapabilities:
 
 @dataclass
 class MCPServerInfo:
-    """MCP server information."""
+    """MCP 服务端信息。"""
 
     name: str
     version: str

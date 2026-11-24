@@ -1,4 +1,4 @@
-"""Run a journaled Task in a private Docker workspace."""
+"""在私有 Docker 工作区执行已写入日志的 Task。"""
 
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ class _ChildRequest:
 
     @classmethod
     def parse(cls, args: object) -> _ChildRequest:
+        """解析任务委派参数，校验必填字段并规范化交付文件列表。"""
         if not isinstance(args, dict) or args.keys() - {"deliverables"} != _TASK_FIELDS or any(
             not isinstance(args[key], str) or not args[key].strip() for key in _TASK_FIELDS
         ):
@@ -61,6 +62,7 @@ class ChildExecution:
 
     @classmethod
     def load(cls, data: dict[str, Any]) -> ChildExecution:
+        """从已持久化的子运行配置中读取并校验版本与字段。"""
         if data.get("version") != 1:
             raise DurableRunError("Unsupported child execution profile.")
         workspace = WorkspaceConfig(**data["workspace"])
@@ -78,19 +80,24 @@ class _DockerLease:
     engine: DockerEngine
 
     def pending(self) -> DockerContainer | None:
+        """查询当前子运行尚未清理的容器记录。"""
         return self.journal.pending_container()
 
     def reserve(self, name: str) -> None:
+        """在日志中预留将要创建的容器名。"""
         self.journal.reserve_container(name)
 
     def confirm(self, name: str, container_id: str) -> None:
+        """把确认后的容器 ID 写入子运行日志。"""
         self.journal.confirm_container(name, container_id)
 
     def release(self, name: str) -> None:
+        """清除已释放容器对应的日志记录。"""
         self.journal.release_container(name)
 
 
 async def _cancel_and_settle(tasks: list[asyncio.Future]) -> None:
+    """请求取消传入的任务，并等待取消或清理实际完成。"""
     for task in tasks:
         if not task.done():
             task.cancel()
@@ -103,6 +110,7 @@ async def _cancel_and_settle(tasks: list[asyncio.Future]) -> None:
 
 
 async def _watch(operation: Awaitable[_T], check_pause: Callable[[], None]) -> _T:
+    """运行操作并监听暂停信号，在结束时清理等待任务。"""
     task = asyncio.ensure_future(operation)
     try:
         while not task.done():
@@ -115,12 +123,14 @@ async def _watch(operation: Awaitable[_T], check_pause: Callable[[], None]) -> _
 
 
 class ChildAgentFactory:
-    """Use the parent's model connection with a sealed sandbox tool registry."""
+    """共用父运行的模型连接，并使用禁止继续注册的沙箱工具注册表。"""
 
     def __init__(self, parent: Agent):
+        """保存提供模型连接和配置的父 Agent。"""
         self.parent = parent
 
     def config(self, root: Path, sessions_dir: str, execution: ChildExecution) -> Config:
+        """根据父 Agent 配置构造子运行使用的执行配置。"""
         parent = self.parent.config
         return replace(
             parent, workdir=root, project_root=root, workspace=execution.workspace,
@@ -132,6 +142,7 @@ class ChildAgentFactory:
         )
 
     def build(self, child: ChildRun, config: Config, execution: ChildExecution, backend: DockerBackend) -> Agent:
+        """在给定受限工作区中组装子 Agent。"""
         from ..agent import Agent
 
         role = self.parent.agent_registry.get(execution.agent_type)
@@ -148,11 +159,12 @@ class ChildAgentFactory:
         )
         agent._permission_actor = f"child:{child.run.run_id}"
         agent.silent = True
-        # Children use separate traces while sharing the trusted model connection.
+        # 子运行各自记录追踪，但共用可信的模型连接。
         agent.set_stream_enabled(False)
         return agent
 
     def allowed_tools(self, role: AgentType) -> tuple[str, ...]:
+        """根据父工具策略和子 Agent 类型求出可用的沙箱工具集合。"""
         policy = self.parent.config.tools
         return tuple(
             name for name in _SANDBOX_TOOLS
@@ -165,11 +177,13 @@ class ChildAgentFactory:
 
 class DurableSubagents:
     def __init__(self, parent: Agent) -> None:
+        """绑定父 Agent，供子运行访问父日志、预算和工具配置。"""
         self.parent = parent
         self.factory = ChildAgentFactory(parent)
 
     @staticmethod
     def _private_directory(path: Path) -> None:
+        """创建或验证用于子运行的私有目录。"""
         key = restricted_root_key(path)
         info = path.lstat()
         if (info.st_dev, info.st_ino) != key or (
@@ -180,6 +194,7 @@ class DurableSubagents:
     async def _create(
         self, journal: RunJournal, step: StepState, request: _ChildRequest, role: AgentType, *, ordinal: int,
     ) -> ChildRun:
+        """为父工具步骤的指定序号创建并登记持久化子运行。"""
         child_id = uuid5(UUID(step.step_id), str(ordinal)).hex
         pool = journal.store.root / "child-workspaces"
         pool.mkdir(mode=0o700, exist_ok=True)
@@ -207,6 +222,7 @@ class DurableSubagents:
     async def _backend(
         self, child: ChildRun, journal: RunJournal,
     ) -> tuple[Config, ChildExecution, DockerBackend]:
+        """构建或重新连接子运行的 Docker 工作区后端。"""
         try:
             self._private_directory(child.workspace_path.parent)
             self._private_directory(child.workspace_path)
@@ -218,11 +234,12 @@ class DurableSubagents:
             await backend.reconcile()
             return config, execution, backend
         except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
-            # Verify the workspace and old container before recovering any tool.
+            # 恢复工具调用之前，先核验工作区和原容器。
             journal.require_recovery(str(exc))
             raise DurableRunPaused(f"Child {child.run.run_id} cannot recover. {exc}") from exc
 
     async def _run(self, child: ChildRun) -> ToolOutcome:
+        """取得子运行的日志和工作区，执行或恢复该子运行。"""
         store = self.parent.run_store.for_child(child)
         with store.claim(child.run.session_id, child.run.run_id) as journal:
             state = journal.state()
@@ -241,6 +258,7 @@ class DurableSubagents:
                     session = SessionStore(Path(child.run.sessions_dir))
 
                     def publish(messages: list[dict]) -> None:
+                        """把子运行日志中的消息同步到对应的 JSONL 会话。"""
                         session.project_durable_messages(child.run.session_id, messages)
 
                 await _watch(
@@ -264,6 +282,7 @@ class DurableSubagents:
             return self._completed(child, journal)
 
     def _artifact_store(self, child: ChildRun) -> ArtifactStore:
+        """为当前委派的子产物构建存储实例。"""
         config = self.parent.config
         return ArtifactStore(
             config.app_home, child.workspace_path, Path(child.run.sessions_dir), child.run.session_id,
@@ -273,6 +292,7 @@ class DurableSubagents:
     async def _deliver(
         self, child: ChildRun, journal: RunJournal, *, backend: DockerBackend | None = None,
     ) -> None:
+        """读取并验证声明的交付文件，将交付凭据写入日志。"""
         if journal.child_delivery() is not None:
             return
         paths = ChildExecution.load(child.execution).deliverables
@@ -296,6 +316,7 @@ class DurableSubagents:
         journal.finish_child_delivery(self._outcome(child, status, summary, artifacts, delivery_error).text)
 
     def _completed(self, child: ChildRun, journal: RunJournal) -> ToolOutcome:
+        """从子运行的持久化交付凭据恢复已完成结果。"""
         receipt = journal.child_delivery()
         if receipt is None:
             raise DurableRunError("Completed child has no delivery receipt.")
@@ -307,6 +328,7 @@ class DurableSubagents:
         child: ChildRun, status: str, summary: str, artifacts: tuple[ChildArtifact, ...] = (),
         delivery_error: str | None = None,
     ) -> ToolOutcome:
+        """将子运行状态和交付结果封装成工具执行结果。"""
         return ToolOutcome(json.dumps({
             "child_run_id": child.run.run_id, "parent_step_id": child.parent_step_id,
             "parent_run_id": child.run.parent_run_id,
@@ -317,6 +339,7 @@ class DurableSubagents:
         }, ensure_ascii=True), "success" if status == "completed" else "error", artifact_eligible=False)
 
     async def dispatch(self, journal: RunJournal, step: StepState, args: dict[str, Any]) -> ToolOutcome:
+        """按照日志工具类型分发子任务批次或子产物读取。"""
         if step.name == ReadChildArtifactTool.name:
             return await self._read_artifact_tool(journal, args)
         batch = step.name == TaskBatchTool.name
@@ -368,6 +391,7 @@ class DurableSubagents:
         )
 
     async def _run_children(self, children: list[ChildRun]) -> list[ToolOutcome]:
+        """并发运行已登记的子任务，按原顺序收集结果。"""
         tasks = [asyncio.create_task(self._run(child)) for child in children]
         try:
             pending = set(tasks)
@@ -385,12 +409,14 @@ class DurableSubagents:
             raise
 
     def list_artifacts(self, child: ChildRun) -> list[ChildArtifact]:
+        """读取子运行已提交的产物交付清单。"""
         store = self.parent.run_store.for_child(child)
         journal = RunJournal(store, child.run.session_id, child.run.run_id)
         receipt = journal.child_delivery()
         return [ChildArtifact(**entry) for entry in json.loads(receipt)["artifacts"]] if receipt is not None else []
 
     def read_artifact(self, child: ChildRun, path: str) -> str:
+        """校验路径与交付记录后，读取指定子产物。"""
         parse_deliverable_paths([path])
         for entry in self.list_artifacts(child):
             if entry.path == path:
@@ -398,6 +424,7 @@ class DurableSubagents:
         raise ArtifactError("No committed child deliverable at that path.")
 
     async def _read_artifact_tool(self, journal: RunJournal, args: dict[str, Any]) -> ToolOutcome:
+        """处理读取子产物的模型工具调用，并限制输出长度。"""
         limit_max = min(self.parent.config.llm.max_tool_output_chars, MAX_READ_CHARS)
         offset, limit = args.get("offset", 0), args.get("limit", limit_max)
         if (
@@ -418,12 +445,14 @@ class DurableSubagents:
         return ToolOutcome(text[offset:offset + limit], artifact_eligible=False)
 
     async def resolve(self, child: ChildRun, step_id: str, output: str, *, is_error: bool) -> None:
+        """在核验子运行工作区及容器清理后，写入人工核实的步骤结果。"""
         store = self.parent.run_store.for_child(child)
         with store.claim(child.run.session_id, child.run.run_id) as journal:
             await self._backend(child, journal)
             journal.resolve(step_id, output, is_error=is_error)
 
     async def abandon(self, child: ChildRun) -> None:
+        """验证子运行工作区和容器清理后，将其标记为放弃。"""
         store = self.parent.run_store.for_child(child)
         with store.claim(child.run.session_id, child.run.run_id) as journal:
             await self._backend(child, journal)

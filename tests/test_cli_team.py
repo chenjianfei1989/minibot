@@ -1,4 +1,4 @@
-"""Tests for /team command handling."""
+"""测试 /team 命令处理流程。"""
 
 from pathlib import Path
 from types import SimpleNamespace

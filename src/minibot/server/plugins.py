@@ -1,7 +1,6 @@
-"""Tool plugin loading for the Minibot server.
+"""MiniBot 服务端的工具插件加载。
 
-Security note: this executes local Python code. This is intended for the
-default "localhost single user" mode.
+安全说明：加载插件会执行本地 Python 代码，适用于默认的本机单用户模式。
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Skills loading system."""
+"""技能加载系统。"""
 
 from .loader import SkillLoader
 

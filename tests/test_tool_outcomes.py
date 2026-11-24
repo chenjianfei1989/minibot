@@ -1,4 +1,4 @@
-"""Tool status survives dispatch, hooks, model turns and persistence."""
+"""验证工具状态在分发、钩子、模型轮次和持久化过程中得以保留。"""
 
 import asyncio
 from pathlib import Path

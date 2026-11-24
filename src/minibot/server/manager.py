@@ -1,4 +1,4 @@
-"""In-process agent/session manager for the web server."""
+"""Web 服务进程内的 Agent 与会话管理器。"""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ class AgentManager:
         }
 
     async def update_config(self, patch: dict[str, Any]) -> None:
-        """Back-compat server-wide config update (maps to default bot + global skills dirs)."""
+        """兼容旧的全局配置更新方式，将配置映射到默认 Bot 和全局技能目录。"""
         async with self._global_lock:
             if "skills_dirs" in patch and patch["skills_dirs"] is not None:
                 self.skills_dirs = [str(Path(p).expanduser().resolve()) for p in patch["skills_dirs"]]
@@ -634,7 +634,7 @@ class AgentManager:
         return None
 
     def submit_tool_approval(self, bot_id: str, session_id: str, approval_id: str, approved: bool) -> None:
-        """Resolve a live invocation without locking its waiting chat stream."""
+        """处理正在等待审批的工具调用，避免锁住等待该审批的聊天流。"""
         bot = self._bots.get((bot_id, session_id))
         if bot is None:
             raise ValueError("No live tool approval matches this ID")

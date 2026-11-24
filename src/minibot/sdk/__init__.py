@@ -1,4 +1,4 @@
-"""Public SDK surface for programmatic Minibot usage."""
+"""供开发者在代码中调用 MiniBot 的公共 SDK。"""
 
 from .minibot import Minibot
 from .types import ChatResult

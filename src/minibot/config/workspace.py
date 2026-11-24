@@ -1,4 +1,4 @@
-"""Host runtime policy for a restricted workspace."""
+"""受限工作区的宿主机运行策略。"""
 
 import os
 from pathlib import Path
@@ -8,11 +8,13 @@ from .schema import Config
 
 
 def require_outside_workspace(config: Config, path: Path, label: str) -> None:
+    """确认指定宿主机状态路径位于受限工作区之外。"""
     if config.workspace.restricted:
         require_outside_root(config.workdir, path, label)
 
 
 def require_outside_root(root: Path, path: Path, label: str) -> None:
+    """检查解析后的路径是否会落入禁止暴露的工作区根目录。"""
     root = root.resolve()
     absolute = path.absolute()
     resolved = absolute.resolve()
@@ -22,14 +24,14 @@ def require_outside_root(root: Path, path: Path, label: str) -> None:
         return
     root_stat = root.stat()
     for ancestor in {*absolute.parents, *resolved.parents, absolute, resolved}:
-        # Filesystem aliases, including case variants on macOS, may compare
-        # differently as paths but still be exposed by the bind mount.
+        # 文件系统别名（包括 macOS 上仅大小写不同的名称）在路径比较中可能不相等，
+        # 但仍可能通过绑定挂载访问。
         if ancestor.exists() and os.path.samestat(ancestor.stat(), root_stat):
             raise ValueError(f"{label} must be outside the restricted Docker workspace")
 
 
 def validate_workspace_runtime(config: Config) -> None:
-    """Check runtime state paths before creating stores or connecting host tools."""
+    """创建存储或连接宿主机工具前，检查运行状态路径。"""
     if not config.workspace.restricted:
         return
     for label, path in (

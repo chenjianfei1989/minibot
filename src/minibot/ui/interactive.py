@@ -1,4 +1,4 @@
-"""Interactive UI utilities: vim editor and arrow-key selector."""
+"""交互式界面辅助工具，包括 Vim 编辑器和方向键选择器。"""
 
 from __future__ import annotations
 
@@ -9,10 +9,9 @@ from typing import Any, Callable, Sequence
 
 
 def edit_in_vim(initial_content: str) -> str | None:
-    """Open ``$EDITOR`` (default ``vim``) with *initial_content*.
+    """用 ``$EDITOR``（默认 ``vim``）打开 *initial_content*。
 
-    Returns the edited text, or ``None`` if the user quit without saving
-    (detected by checking whether the file was modified).
+    返回编辑后的文本。用户未保存即退出时返回 ``None``，通过检查文件是否被修改来判断。
     """
     editor = os.environ.get("EDITOR", "vim")
     with tempfile.NamedTemporaryFile(
@@ -43,11 +42,11 @@ async def interactive_select(
     render_fn: Callable[[Any, int, int], str],
     on_toggle: Callable[[Any], Any],
 ) -> None:
-    """Arrow-key interactive selector using prompt_toolkit.
+    """使用 prompt_toolkit 实现的方向键交互选择器。
 
-    *render_fn(item, index, cursor)* → display string per item.
-    *on_toggle(item)* is called (may be async) when Enter is pressed.
-    Press ``q`` or ``Esc`` to exit.
+    *render_fn(item, index, cursor)* 返回每项的显示文本。
+    按下回车时调用 *on_toggle(item)*，该回调可以是异步函数。
+    按 ``q`` 或 ``Esc`` 退出。
     """
     from prompt_toolkit import Application
     from prompt_toolkit.key_binding import KeyBindings
@@ -85,7 +84,7 @@ async def interactive_select(
         result = on_toggle(items[cursor[0]])
         if hasattr(result, "__await__"):
             await result
-        # refresh display automatically via invalidation
+        # 通过使当前显示失效来自动触发刷新。
 
     @kb.add("q")
     @kb.add("escape")
@@ -105,10 +104,10 @@ async def interactive_choice(
     *,
     render_fn: Callable[[Any, int, int], str],
 ) -> Any | None:
-    """Arrow-key interactive selector that returns the chosen item on Enter.
+    """使用方向键选择项目，按回车返回所选项。
 
-    *render_fn(item, index, cursor)* → display string per item.
-    Press ``q`` or ``Esc`` to exit returning ``None``.
+    *render_fn(item, index, cursor)* 返回每项的显示文本。
+    按 ``q`` 或 ``Esc`` 退出并返回 ``None``。
     """
     from prompt_toolkit import Application
     from prompt_toolkit.key_binding import KeyBindings
@@ -164,12 +163,12 @@ async def interactive_pick_option_or_custom(
     *,
     allow_free_text: bool = True,
 ) -> dict[str, str] | None:
-    """Arrow-key selector for askuserquestion.
+    """供 askuserquestion 使用的方向键选择器。
 
-    Returns one of:
+    返回下列值之一。
     - ``{"kind": "option", "label": ..., "value": ...}``
     - ``{"kind": "custom_prompt"}``
-    - ``None`` when cancelled
+    - 取消时返回 ``None``。
     """
     from prompt_toolkit import Application
     from prompt_toolkit.key_binding import KeyBindings

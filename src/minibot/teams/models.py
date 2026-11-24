@@ -1,4 +1,4 @@
-"""Data models for agent teams."""
+"""Agent 团队的数据模型。"""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from typing import Any
 
 
 def utc_now_iso() -> str:
-    """UTC timestamp in ISO-8601 format."""
+    """ISO 8601 格式的 UTC 时间戳。"""
     return datetime.now(timezone.utc).isoformat()
 
 
 class MemberStatus(str, Enum):
-    """Team member lifecycle status."""
+    """团队成员的生命周期状态。"""
 
     IDLE = "idle"
     IN_PROGRESS = "in_progress"
@@ -23,7 +23,7 @@ class MemberStatus(str, Enum):
 
 
 class TaskStatus(str, Enum):
-    """Task lifecycle status."""
+    """任务的生命周期状态。"""
 
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -32,11 +32,11 @@ class TaskStatus(str, Enum):
 
 @dataclass
 class TeamMember:
-    """Single team member."""
+    """单个团队成员。"""
 
     member_id: str
     name: str
-    role: str  # lead | teammate
+    role: str  # 角色为 lead 或 teammate。
     status: MemberStatus = MemberStatus.IDLE
     created_at: str = field(default_factory=utc_now_iso)
     last_active_at: str = field(default_factory=utc_now_iso)
@@ -45,7 +45,7 @@ class TeamMember:
 
 @dataclass
 class Team:
-    """In-memory team definition."""
+    """保存在内存中的团队定义。"""
 
     team_id: str
     name: str
@@ -56,7 +56,7 @@ class Team:
 
 @dataclass
 class TeamMessage:
-    """Message between team members."""
+    """团队成员之间的消息。"""
 
     message_id: str
     team_id: str
@@ -64,12 +64,12 @@ class TeamMessage:
     recipient_id: str
     content: str
     created_at: str = field(default_factory=utc_now_iso)
-    kind: str = "direct"  # direct | broadcast
+    kind: str = "direct"  # 消息类型为 direct 或 broadcast。
 
 
 @dataclass
 class TeamTask:
-    """Shared task-board item."""
+    """共享任务板上的一项任务。"""
 
     task_id: str
     team_id: str
@@ -86,7 +86,7 @@ class TeamTask:
 
 @dataclass
 class FileLock:
-    """File-level lock held by a teammate."""
+    """由队友持有的文件级锁。"""
 
     path: str
     owner_member_id: str
@@ -94,7 +94,7 @@ class FileLock:
 
 
 def as_dict(obj: Any) -> dict[str, Any]:
-    """Dataclass to plain dict helper."""
+    """将数据类转换为普通字典的辅助函数。"""
     from dataclasses import asdict
 
     return asdict(obj)

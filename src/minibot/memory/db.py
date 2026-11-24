@@ -1,4 +1,4 @@
-"""Memory-only SQLModel engine and session bootstrap."""
+"""初始化仅用于记忆的 SQLModel 引擎和会话。"""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ _MEMORY_DB_CACHE_LOCK = Lock()
 
 
 def _resolve_memory_dir(memory_dir: str, *, app_home: Path) -> Path:
+    """解析记忆存储目录，并展开用户主目录。"""
     path = Path(memory_dir).expanduser()
     if path.is_absolute():
         return path.resolve()
@@ -32,6 +33,7 @@ def _resolve_memory_dir(memory_dir: str, *, app_home: Path) -> Path:
 
 
 def _normalize_postgres_database_url(database_url: str) -> str:
+    """将 PostgreSQL 连接地址转换为当前驱动使用的格式。"""
     if database_url.startswith("postgresql+"):
         return database_url
     if database_url.startswith("postgresql://"):
@@ -42,11 +44,13 @@ def _normalize_postgres_database_url(database_url: str) -> str:
 
 
 def _clear_memory_db_cache() -> None:
+    """在缓存锁保护下清空记忆数据库实例缓存。"""
     with _MEMORY_DB_CACHE_LOCK:
         _MEMORY_DB_CACHE.clear()
 
 
 def create_memory_db(config: MemoryConfig, *, app_home: Path) -> MemoryDatabase:
+    """根据后端配置获取或初始化记忆数据库及会话工厂。"""
     backend = (config.backend or "sqlite").strip().lower()
 
     if backend == "sqlite":

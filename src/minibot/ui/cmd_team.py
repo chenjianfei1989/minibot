@@ -1,4 +1,4 @@
-"""/team command handler."""
+"""/team 命令处理器。"""
 
 from __future__ import annotations
 

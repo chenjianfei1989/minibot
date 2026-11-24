@@ -57,5 +57,9 @@ def test_loader_reads_skill_markdown_as_utf8(tmp_path: Path, monkeypatch: pytest
     loader = SkillLoader(skills_root)
 
     assert loader.skills["utf8-skill"]["description"] == "Snowman: 雪人"
+    assert loader.skills["skill-creator"]["description"].startswith("设计或更新 MiniBot 技能")
+    installer_content = loader.get_skill_content("skill-installer")
+    assert installer_content is not None
+    assert "# 安装技能" in installer_content
     assert encodings
     assert all(encoding == "utf-8" for encoding in encodings)

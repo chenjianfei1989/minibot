@@ -1,4 +1,4 @@
-"""Memory system for Minibot."""
+"""MiniBot 记忆系统。"""
 
 from .manager import MemoryManager
 from .models import MemoryNamespace, MemoryNode

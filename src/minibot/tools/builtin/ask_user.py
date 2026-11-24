@@ -1,4 +1,4 @@
-"""Interactive ask-user tool."""
+"""交互式用户提问工具。"""
 
 from __future__ import annotations
 
@@ -13,10 +13,12 @@ _NUMBERED_OPTION_RE = re.compile(r"(?:(?<=^)|(?<=[\s\n]))(\d+)[\.\)、．]\s*")
 
 
 def _clean_option_label(value: str) -> str:
+    """整理选项标签的空白并去掉末尾的分隔标点。"""
     return re.sub(r"\s+", " ", value).strip().rstrip(",，;；")
 
 
 def _normalize_option_list(raw_options: Any) -> list[dict[str, str]]:
+    """将输入选项整理为带有标签和值的列表。"""
     options: list[dict[str, str]] = []
     if not isinstance(raw_options, list):
         return options
@@ -38,6 +40,7 @@ def _normalize_option_list(raw_options: Any) -> list[dict[str, str]]:
 
 
 def _extract_numbered_prompt_options(prompt: str) -> tuple[str, list[dict[str, str]]]:
+    """从提问文本中拆出编号选项及其对应的问题文本。"""
     text = prompt.strip()
     if not text:
         return "", []
@@ -64,6 +67,7 @@ def _extract_numbered_prompt_options(prompt: str) -> tuple[str, list[dict[str, s
 
 
 def normalize_ask_user_prompt_and_options(prompt: str, raw_options: Any) -> tuple[str, list[dict[str, str]]]:
+    """规范化问题和显式选项，必要时从问题文本提取编号选项。"""
     normalized_prompt = str(prompt or "").strip()
     options = _normalize_option_list(raw_options)
     if options:
@@ -76,7 +80,7 @@ def normalize_ask_user_prompt_and_options(prompt: str, raw_options: Any) -> tupl
 
 
 class AskUserQuestionTool(ResultTool):
-    """Request a user answer from an interactive client."""
+    """通过交互式客户端向用户请求回答。"""
 
     name = "askuserquestion"
     description = (
@@ -87,6 +91,7 @@ class AskUserQuestionTool(ResultTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明提问文本、结构化选项和回答约束的输入 Schema。"""
         return {
             "type": "object",
             "properties": {
@@ -127,6 +132,7 @@ class AskUserQuestionTool(ResultTool):
         }
 
     async def execute_result(self, **kwargs) -> ToolOutcome:
+        """校验提问参数，生成交给 Agent 和交互前端的问题结果。"""
         prompt = str(kwargs.get("prompt") or "").strip()
         if not prompt:
             return ToolOutcome(json.dumps({"error": "prompt is required"}, ensure_ascii=False), "invalid_arguments")

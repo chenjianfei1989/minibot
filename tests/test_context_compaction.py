@@ -1,4 +1,4 @@
-"""Tests for context compaction logic in the Agent."""
+"""测试 Agent 的上下文压缩逻辑。"""
 
 import pytest
 import asyncio
@@ -47,7 +47,7 @@ class MockLLMClient:
     async def create_message_stream_async(self, **kwargs):
         self.stream_call_count += 1
         
-        # Async generator for chunks
+        # 用于生成数据分片的异步生成器。
         async def _gen():
             if self.stream_responses:
                 resp = self.stream_responses.pop(0)
@@ -85,11 +85,11 @@ def mock_agent(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_agent_run_loop_triggers_compaction(mock_agent):
-    # Set up the mock client to return a high token usage to trigger compaction
+    # 让模拟客户端返回较高的 token 用量，以触发上下文压缩。
     mock_agent.client.responses = [
-        # 1. Normal response but with extremely high token usage (17,000 > 80% of 20,000)
+        # 1. 正常回复，但 token 用量超过阈值（17,000 > 20,000 的 80%）。
         MockResponse("This message makes the context very long.", total_tokens=17000),
-        # 2. Compaction summarization response
+        # 2. 返回上下文压缩摘要。
         MockResponse("This is the compacted summary."),
     ]
     

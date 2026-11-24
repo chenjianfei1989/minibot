@@ -1,4 +1,4 @@
-"""Standard-library file operations. The restricted helper runs this source inside Docker."""
+"""仅使用标准库实现的文件操作。受限助手会在 Docker 内运行这段源码。"""
 
 from contextlib import ExitStack, suppress
 import codecs
@@ -17,10 +17,11 @@ OUTPUT_LIMIT_EXIT = 42
 
 
 class FileOutputLimit(ValueError):
-    """A complete file read would exceed the available output budget."""
+    """完整读取文件会超出可用的输出预算。"""
 
 
 def bounded_file_text(file, limit: int | None, max_bytes: int) -> str:
+    """在字节预算内读取并解码文本，按需限制返回行数。"""
     data = file.read(max_bytes + 1)
     overflow = len(data) > max_bytes
     decoder = codecs.getincrementaldecoder("utf-8")()
@@ -41,6 +42,7 @@ def bounded_file_text(file, limit: int | None, max_bytes: int) -> str:
 
 
 def bounded_listing(entries):
+    """有界地读取目录的直接条目。"""
     names = []
     for entry in entries:
         if len(names) >= MAX_LIST_ENTRIES:
@@ -50,6 +52,7 @@ def bounded_listing(entries):
 
 
 def restricted_parts(path: str) -> tuple[str, ...]:
+    """校验受限工作区相对路径并返回路径组件。"""
     parts = path.split("/")
     if not path or path.startswith("/") or "\\" in path or "\0" in path or ".." in parts:
         raise ValueError(f"Path must be workspace-relative without parent traversal: {path!r}")
@@ -57,6 +60,7 @@ def restricted_parts(path: str) -> tuple[str, ...]:
 
 
 def _walk_directory(stack, parts, create):
+    """逐级打开目录，从给定目录描述符定位目标父目录。"""
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     current = os.open("/workspace", flags)
     stack.callback(os.close, current)
@@ -70,6 +74,7 @@ def _walk_directory(stack, parts, create):
 
 
 def _regular_file(parent, name):
+    """检查指定目录项是否为可以安全操作的普通文件。"""
     info = os.stat(name, dir_fd=parent, follow_symlinks=False)
     if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
         raise ValueError("File must be a regular file with one hard link.")
@@ -77,6 +82,7 @@ def _regular_file(parent, name):
 
 
 def _open_file(parent, name, expected):
+    """打开目录项并核验文件类型与状态。"""
     fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY, dir_fd=parent)
     opened = os.fstat(fd)
     if not os.path.samestat(opened, expected) or opened.st_nlink != 1:
@@ -86,12 +92,14 @@ def _open_file(parent, name, expected):
 
 
 def _file_version(info):
+    """从文件状态提取用于并发检查的版本信息。"""
     if info is None:
         return None
     return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
 def _replace_file(parent, name, content, expected):
+    """把 UTF-8 内容写入暂存文件，核验目标状态后原子替换。"""
     data = content.encode("utf-8")
     if len(data) > MAX_MUTATION_BYTES:
         raise ValueError("File content exceeds the 16 MiB mutation limit.")
@@ -115,6 +123,7 @@ def _replace_file(parent, name, content, expected):
 
 
 def _operation(request):
+    """按请求的操作类型分发受限工作区文件操作。"""
     operation = request["operation"]
     parts = restricted_parts(request["path"])
     with ExitStack() as stack:
@@ -153,6 +162,7 @@ def _operation(request):
 
 
 def _main():
+    """读取文件操作请求并输出结果或诊断。"""
     try:
         request = json.loads(sys.stdin.buffer.read().decode("utf-8"))
         sys.stdout.buffer.write(_operation(request).encode("utf-8"))

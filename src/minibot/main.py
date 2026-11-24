@@ -1,4 +1,4 @@
-"""Minibot application entry point."""
+"""MiniBot 应用入口。"""
 
 import asyncio
 import atexit
@@ -117,7 +117,7 @@ def _print_banner(agent: Agent) -> None:
 
 
 def _render_history(history: list[dict]) -> None:
-    """Render loaded session history to the terminal."""
+    """将已加载的会话历史呈现在终端。"""
     if not history:
         return
     print_system("── session history ──")
@@ -136,7 +136,7 @@ def _render_history(history: list[dict]) -> None:
 
 
 async def repl(agent: Agent) -> None:
-    """Run the interactive REPL."""
+    """运行交互式 REPL。"""
     history: list[dict] = []
     session_mgr: SessionManager | None = None
     current_session_id = agent.session_id
@@ -150,10 +150,10 @@ async def repl(agent: Agent) -> None:
     else:
         session_mgr = None
 
-    # Start session
+    # 启动会话。
     await agent.start_session()
 
-    # Connect to MCP servers
+    # 连接 MCP 服务。
     mcp_errors = await agent.connect_mcp_servers()
     for server, error in mcp_errors.items():
         if error:
@@ -438,20 +438,20 @@ async def repl(agent: Agent) -> None:
             except Exception as e:
                 print_system(f"Error: {e}")
 
-            # Persist newly added messages
+            # 持久化新增消息。
             if session_mgr is not None:
                 for msg in history[pre_len:]:
                     session_mgr.append_message(current_session_id, msg)
 
             print()
     finally:
-        # End session
+        # 结束会话。
         await agent.end_session()
         print_system("Session ended.")
 
 
 def main() -> None:
-    """Main entry point."""
+    """主入口。"""
     workdir = Path.cwd().resolve()
     app_home = resolve_app_home()
     project_root = resolve_project_root(workdir)

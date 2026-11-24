@@ -1,4 +1,4 @@
-"""Hooks system for Minibot."""
+"""MiniBot 钩子系统。"""
 
 from .events import HookEvent, HookContext, ToolCallContext, SessionContext, TeamEventContext
 from .manager import HookManager

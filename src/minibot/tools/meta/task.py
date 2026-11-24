@@ -1,4 +1,4 @@
-"""Task tool for spawning subagents."""
+"""用于启动子 Agent 的 Task 工具。"""
 
 from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
@@ -17,6 +17,7 @@ MAX_BATCH_CHILDREN = 4
 
 
 def _task_schema(agent_registry: "AgentRegistry") -> dict[str, Any]:
+    """根据子 Agent 注册表构造任务委派的参数 Schema。"""
     return {
         "type": "object",
         "properties": {
@@ -29,7 +30,7 @@ def _task_schema(agent_registry: "AgentRegistry") -> dict[str, Any]:
 
 
 class TaskTool(ResultTool):
-    """Spawn a subagent for a focused subtask."""
+    """为明确的子任务启动一个子 Agent。"""
 
     name = "Task"
 
@@ -40,12 +41,14 @@ class TaskTool(ResultTool):
         *,
         trace_for_run: "Callable[[], RunTrace | None] | None" = None,
     ):
+        """绑定普通任务委派使用的子 Agent 注册表与执行器。"""
         self.agent_registry = agent_registry
         self.subagent_executor = subagent_executor
         self.trace_for_run = trace_for_run
 
     @property
     def description(self) -> str:
+        """根据可用子 Agent 类型生成任务工具的说明。"""
         agents_desc = self.agent_registry.get_descriptions()
         return f"""Spawn a subagent for a focused subtask.
 
@@ -54,6 +57,7 @@ Agent types:
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """返回普通任务委派的输入 Schema。"""
         return _task_schema(self.agent_registry)
 
     async def execute_result(
@@ -62,7 +66,7 @@ Agent types:
         prompt: str,
         agent_type: str,
     ) -> ToolOutcome:
-        """Execute a subagent task."""
+        """执行一个子 Agent 任务。"""
         agent = self.agent_registry.get(agent_type)
         if agent is None:
             return ToolOutcome(f"Error: Unknown agent type '{agent_type}'", "invalid_arguments")
@@ -73,9 +77,10 @@ Agent types:
 
 
 class JournalTool(ResultTool):
-    """A tool that can only execute through the durable run dispatcher."""
+    """只能通过持久化运行分发器执行的工具。"""
 
     async def execute_result(self, **kwargs: Any) -> ToolOutcome:
+        """在未经过持久化分发器时返回拒绝结果。"""
         return ToolOutcome("This tool requires an active durable parent run.", "refused")
 
 
@@ -84,10 +89,12 @@ class DurableTaskTool(JournalTool):
     description = "Delegate to an isolated Docker child and collect its declared UTF-8 files."
 
     def __init__(self, agent_registry: "AgentRegistry"):
+        """绑定持久化任务使用的子 Agent 注册表。"""
         self.agent_registry = agent_registry
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """构造单个持久化任务的 Schema，并允许声明交付文件。"""
         schema = _task_schema(self.agent_registry)
         schema["properties"]["deliverables"] = {
             "type": "array", "items": {"type": "string"},
@@ -103,6 +110,7 @@ class TaskBatchTool(DurableTaskTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明最多可并行委派的任务数量及各任务字段。"""
         return {
             "type": "object",
             "properties": {"tasks": {
@@ -119,10 +127,12 @@ class ReadChildArtifactTool(JournalTool):
     description = "Read verified text from a child deliverable belonging to this parent run."
 
     def __init__(self, output_chars: int):
+        """按模型请求限制计算单次读取子产物的字符上限。"""
         self.limit = min(output_chars, MAX_READ_CHARS)
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明读取子产物所需的子运行 ID、路径及读取范围。"""
         return {
             "type": "object",
             "properties": {

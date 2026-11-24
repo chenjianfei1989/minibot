@@ -1,4 +1,4 @@
-"""In-memory state store for one active team."""
+"""保存单个活跃团队状态的内存存储。"""
 
 from __future__ import annotations
 
@@ -22,9 +22,10 @@ from .models import (
 
 
 class TeamStore:
-    """Holds team members, messages, tasks, locks, and events."""
+    """保存团队成员、消息、任务、锁和事件。"""
 
     def __init__(self, log_dir: Path):
+        """初始化当前团队的内存状态、日志目录和并发协调资源。"""
         self.log_dir = log_dir
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -40,10 +41,12 @@ class TeamStore:
 
     @property
     def has_team(self) -> bool:
+        """判断当前存储是否已有团队实例。"""
         return self._team is not None
 
     @property
     def team(self) -> Team | None:
+        """返回当前团队对象。"""
         return self._team
 
     async def create_team(
@@ -53,7 +56,7 @@ class TeamStore:
         lead_id: str,
         teammate_ids: list[str],
     ) -> Team:
-        """Create a fresh team."""
+        """创建一个新团队。"""
         async with self._lock:
             if self._team is not None:
                 raise ValueError("A team is already active in this session")
@@ -99,7 +102,7 @@ class TeamStore:
             return self._team
 
     async def clear_team(self) -> None:
-        """Remove all state for current team."""
+        """清除当前团队的所有状态。"""
         async with self._lock:
             self._team = None
             self._messages = []
@@ -111,7 +114,7 @@ class TeamStore:
             self._log_file = None
 
     async def register_mailbox(self, member_id: str) -> asyncio.Queue[dict[str, Any]]:
-        """Create or return mailbox queue for a member."""
+        """创建或返回指定成员的收件队列。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -124,7 +127,7 @@ class TeamStore:
             return queue
 
     async def enqueue_mail(self, member_id: str, item: dict[str, Any]) -> None:
-        """Push one message envelope into member mailbox."""
+        """向成员的收件箱推送一条消息封装。"""
         async with self._lock:
             queue = self._mailboxes.get(member_id)
         if queue is None:
@@ -139,7 +142,7 @@ class TeamStore:
         content: str,
         kind: str,
     ) -> TeamMessage:
-        """Persist one team message."""
+        """持久化一条团队消息。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -172,7 +175,7 @@ class TeamStore:
             return msg
 
     async def list_members(self) -> list[TeamMember]:
-        """Return current members."""
+        """返回当前成员。"""
         async with self._lock:
             if self._team is None:
                 return []
@@ -185,7 +188,7 @@ class TeamStore:
         *,
         last_error: str | None = None,
     ) -> None:
-        """Update one member status."""
+        """更新一名成员的状态。"""
         async with self._lock:
             if self._team is None:
                 return
@@ -204,7 +207,7 @@ class TeamStore:
         created_by: str,
         assignee_id: str | None = None,
     ) -> TeamTask:
-        """Create a shared task."""
+        """创建一项共享任务。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -232,12 +235,12 @@ class TeamStore:
             return task
 
     async def list_tasks(self) -> list[TeamTask]:
-        """List tasks sorted by creation order."""
+        """按创建顺序列出任务。"""
         async with self._lock:
             return list(self._tasks.values())
 
     async def assign_task(self, task_id: str, assignee_id: str) -> TeamTask:
-        """Assign task to a member."""
+        """将任务分配给一名成员。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -260,7 +263,7 @@ class TeamStore:
             return task
 
     async def claim_task(self, member_id: str, task_id: str | None = None) -> TeamTask | None:
-        """Claim first available task for member."""
+        """为成员认领第一个可用任务。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -300,7 +303,7 @@ class TeamStore:
         completed_by: str,
         note: str | None = None,
     ) -> TeamTask:
-        """Mark task as completed."""
+        """将任务标记为已完成。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -324,7 +327,7 @@ class TeamStore:
             return task
 
     async def acquire_file_lock(self, *, path: str, member_id: str) -> tuple[bool, str | None]:
-        """Acquire lock for one file path."""
+        """为一个文件路径获取锁。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -339,7 +342,7 @@ class TeamStore:
             return False, existing.owner_member_id
 
     async def acquire_workspace_lock(self, *, member_id: str) -> tuple[bool, str | None]:
-        """Acquire conservative workspace-wide lock."""
+        """获取覆盖整个工作区的锁，以避免不同操作之间发生冲突。"""
         async with self._lock:
             if self._team is None:
                 raise ValueError("No active team")
@@ -351,7 +354,7 @@ class TeamStore:
             return False, self._workspace_lock_owner
 
     async def release_member_locks(self, member_id: str) -> None:
-        """Release all file/workspace locks held by a member."""
+        """释放一名成员持有的所有文件锁和工作区锁。"""
         async with self._lock:
             to_remove = [
                 path for path, lock in self._file_locks.items() if lock.owner_member_id == member_id
@@ -362,11 +365,12 @@ class TeamStore:
                 self._workspace_lock_owner = None
 
     async def emit_event(self, event: dict[str, Any]) -> None:
-        """Publish one event entry."""
+        """发布一条事件记录。"""
         async with self._lock:
             self._emit_event_unlocked(event)
 
     def _emit_event_unlocked(self, event: dict[str, Any]) -> None:
+        """在调用方已持有锁时发布团队事件。"""
         event = dict(event)
         event.setdefault("timestamp", utc_now_iso())
         self._events.put_nowait(event)
@@ -378,7 +382,7 @@ class TeamStore:
                 pass
 
     async def wait_events(self, timeout_sec: int, max_events: int = 20) -> list[dict[str, Any]]:
-        """Wait for event(s), returning at least one when available."""
+        """等待事件，可用时至少返回一条。"""
         if max_events < 1:
             max_events = 1
 
@@ -392,7 +396,7 @@ class TeamStore:
         return items
 
     async def summary(self) -> dict[str, Any]:
-        """Runtime summary for /info and debugging."""
+        """供 /info 和调试使用的运行时摘要。"""
         async with self._lock:
             if self._team is None:
                 return {"active": False}

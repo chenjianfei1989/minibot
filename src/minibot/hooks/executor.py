@@ -1,4 +1,4 @@
-"""Hook executor for running hook handlers."""
+"""负责运行钩子处理器的执行器。"""
 
 import asyncio
 import importlib
@@ -11,9 +11,10 @@ from .events import HookContext, HookResult
 
 
 class HookExecutor:
-    """Executes hook handlers."""
+    """运行钩子处理器。"""
 
     def __init__(self, workdir: Path, default_timeout: int = 30):
+        """保存工作目录，供钩子处理器定位文件和执行。"""
         self.workdir = workdir
         self.default_timeout = default_timeout
 
@@ -23,18 +24,18 @@ class HookExecutor:
         context: HookContext,
         timeout: int | None = None,
     ) -> HookResult:
-        """Execute a hook handler."""
+        """执行指定的钩子处理器。"""
         timeout = timeout or self.default_timeout
 
         try:
             if ":" in handler and not handler.endswith(".py"):
-                # Python function reference: module:function
+                # Python 函数引用采用 module:function 格式。
                 return await self._execute_function(handler, context, timeout)
             elif handler.endswith(".py"):
-                # Python script
+                # Python 脚本。
                 return await self._execute_python_script(handler, context, timeout)
             elif handler.endswith(".sh"):
-                # Shell script
+                # Shell 脚本。
                 return await self._execute_shell_script(handler, context, timeout)
             else:
                 return HookResult(
@@ -58,7 +59,7 @@ class HookExecutor:
         context: HookContext,
         timeout: int,
     ) -> HookResult:
-        """Execute a Python function handler."""
+        """执行以 Python 函数实现的处理器。"""
         module_name, func_name = handler.rsplit(":", 1)
 
         try:
@@ -67,7 +68,7 @@ class HookExecutor:
         except (ImportError, AttributeError) as e:
             return HookResult(success=False, error=f"Failed to load handler: {e}")
 
-        # Run the function
+        # 执行函数。
         loop = asyncio.get_event_loop()
         if asyncio.iscoroutinefunction(func):
             result = await asyncio.wait_for(func(context), timeout=timeout)
@@ -85,12 +86,12 @@ class HookExecutor:
         context: HookContext,
         timeout: int,
     ) -> HookResult:
-        """Execute a Python script handler."""
+        """执行以 Python 脚本实现的处理器。"""
         script_path = self._resolve_path(handler)
         if not script_path.exists():
             return HookResult(success=False, error=f"Script not found: {handler}")
 
-        # Prepare environment with context
+        # 根据上下文准备环境。
         env = self._prepare_env(context)
 
         proc = await asyncio.create_subprocess_exec(
@@ -125,7 +126,7 @@ class HookExecutor:
         context: HookContext,
         timeout: int,
     ) -> HookResult:
-        """Execute a shell script handler."""
+        """执行以 Shell 脚本实现的处理器。"""
         script_path = self._resolve_path(handler)
         if not script_path.exists():
             return HookResult(success=False, error=f"Script not found: {handler}")
@@ -159,14 +160,14 @@ class HookExecutor:
         return self._parse_script_output(stdout.decode())
 
     def _resolve_path(self, handler: str) -> Path:
-        """Resolve handler path relative to workdir."""
+        """以 workdir 为基准解析处理器路径。"""
         path = Path(handler)
         if not path.is_absolute():
             path = self.workdir / path
         return path
 
     def _prepare_env(self, context: HookContext) -> dict[str, str]:
-        """Prepare environment variables for script execution."""
+        """准备执行脚本所需的环境变量。"""
         import os
         import json
 
@@ -175,7 +176,7 @@ class HookExecutor:
         env["HOOK_WORKDIR"] = context.workdir
         env["HOOK_CONTEXT"] = json.dumps(context.metadata)
 
-        # Add specific context fields
+        # 添加特定的上下文字段。
         if hasattr(context, "tool_name"):
             env["HOOK_TOOL_NAME"] = context.tool_name
         if hasattr(context, "tool_args"):
@@ -186,7 +187,7 @@ class HookExecutor:
         return env
 
     def _parse_function_result(self, result: Any) -> HookResult:
-        """Parse result from a function handler."""
+        """解析函数处理器的返回结果。"""
         if result is None:
             return HookResult(success=True)
         if isinstance(result, HookResult):
@@ -205,12 +206,12 @@ class HookExecutor:
         return HookResult(success=True, output=str(result))
 
     def _parse_script_output(self, output: str) -> HookResult:
-        """Parse output from a script handler."""
+        """解析脚本处理器的输出。"""
         import json
 
         output = output.strip()
 
-        # Try to parse as JSON
+        # 尝试按 JSON 解析。
         if output.startswith("{"):
             try:
                 data = json.loads(output)
@@ -225,7 +226,7 @@ class HookExecutor:
             except json.JSONDecodeError:
                 pass
 
-        # Check for special prefixes
+        # 检查特殊前缀。
         if output.startswith("BLOCKED:"):
             return HookResult(
                 success=True,

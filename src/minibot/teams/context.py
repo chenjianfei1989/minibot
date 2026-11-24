@@ -1,4 +1,4 @@
-"""Context propagation for team-aware tool execution."""
+"""为可感知团队的工具执行传递上下文。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class TeamExecutionContext:
-    """Per-execution team context available to tools."""
+    """工具可访问的单次执行团队上下文。"""
 
     role: str
     team_id: str | None
@@ -29,7 +29,7 @@ _CTX: ContextVar[TeamExecutionContext | None] = ContextVar(
 
 @contextmanager
 def team_execution_context(ctx: TeamExecutionContext | None) -> Iterator[None]:
-    """Temporarily bind execution context for the current task."""
+    """临时为当前任务绑定执行上下文。"""
     token = _CTX.set(ctx)
     try:
         yield
@@ -38,5 +38,5 @@ def team_execution_context(ctx: TeamExecutionContext | None) -> Iterator[None]:
 
 
 def get_team_execution_context() -> TeamExecutionContext | None:
-    """Get the current team execution context."""
+    """获取当前团队执行上下文。"""
     return _CTX.get()

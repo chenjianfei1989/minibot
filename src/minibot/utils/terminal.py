@@ -1,4 +1,4 @@
-"""Terminal rendering helpers (stdlib-only)."""
+"""仅使用标准库的终端渲染辅助函数。"""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ def style(text: str, *, fg: str | None = None, bold: bool = False, dim: bool = F
 def clear_screen() -> None:
     if not is_tty():
         return
-    # ANSI clear + home
+    # 使用 ANSI 转义序列清屏并将光标移回左上角。
     sys.stdout.write("\x1b[2J\x1b[H")
     sys.stdout.flush()
 
@@ -78,7 +78,7 @@ def term_width(default: int = 100) -> int:
         columns = shutil.get_terminal_size((default, 24)).columns
     except Exception:
         columns = default
-    # Avoid printing into the last column to prevent terminal auto-wrap artifacts.
+    # 避开最后一列，以免终端自动换行破坏布局。
     return max(1, columns - 1)
 
 
@@ -153,23 +153,22 @@ class PanelStyle:
 
 
 def panel(title: str, body: str, *, width: int | None = None, pstyle: PanelStyle = PanelStyle()) -> str:
-    """
-    Render a unicode box around text.
+    """用 Unicode 字符为文本绘制边框。
 
-    Notes:
-    - Keeps existing line breaks.
-    - Wraps long lines to fit the box.
+    说明如下。
+    - 保留已有的换行。
+    - 将长行折行至边框内。
     """
     term = term_width()
     w = min(width or term, 140, term)
     min_w = 10 if term >= 10 else term
     w = max(min_w, w)
-    inner_w = w - 4  # padding + borders
+    inner_w = w - 4  # 预留内边距和边框。
     title_txt = f" {title.strip()} " if title.strip() else ""
 
     top_rule = "─" * max(1, w - 2)
     if title_txt:
-        # Insert title into top rule: ── title ──
+        # 将标题嵌入顶部边框。
         available = w - 2
         trimmed = title_txt[: max(0, available - 2)]
         left = max(1, (available - len(trimmed)) // 2)

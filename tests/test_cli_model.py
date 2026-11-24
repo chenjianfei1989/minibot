@@ -1,4 +1,4 @@
-"""Tests for /model command handler."""
+"""测试 /model 命令处理器。"""
 
 import pytest
 from pathlib import Path
@@ -21,17 +21,17 @@ def mock_env(tmp_path: Path) -> Path:
 
 @pytest.mark.asyncio
 async def test_handle_model_cmd_no_args_or_config(mock_env: Path, tmp_path: Path):
-    """Test that /model config works and updates .env."""
+    """验证 /model config 能正确更新 .env。"""
     selected_item = {"key": "MODEL_ID", "value": "gpt-4o"}
     prompt_fn = AsyncMock(return_value="gpt-4.5")
     
     with patch("src.minibot.ui.cmd_model.interactive_choice", new_callable=AsyncMock) as mock_choice:
-        # First return an item, then return None to exit the loop
+        # 先返回一个选项，再返回 None 以退出循环。
         mock_choice.side_effect = [selected_item, None]
         
         await handle_model_cmd("config", tmp_path, prompt_fn)
         
-        # Verify prompt was called
+        # 验证已调用提示函数。
         prompt_fn.assert_called_once()
         args, kwargs = prompt_fn.call_args
         assert "MODEL_ID" in args[0]
@@ -44,7 +44,7 @@ async def test_handle_model_cmd_no_args_or_config(mock_env: Path, tmp_path: Path
 
 @pytest.mark.asyncio
 async def test_handle_model_cmd_no_changes(mock_env: Path, tmp_path: Path):
-    """Test that identical input doesn't change anything."""
+    """验证输入相同时不会产生任何修改。"""
     selected_item = {"key": "MODEL_ID", "value": "gpt-4o"}
     prompt_fn = AsyncMock(return_value="gpt-4o")
     
@@ -58,7 +58,7 @@ async def test_handle_model_cmd_no_changes(mock_env: Path, tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_handle_model_cmd_abort_prompt(mock_env: Path, tmp_path: Path):
-    """Test KeyboardInterrupt during the text prompt."""
+    """验证文本输入期间触发 KeyboardInterrupt 的行为。"""
     selected_item = {"key": "MODEL_ID", "value": "gpt-4o"}
     prompt_fn = AsyncMock(side_effect=KeyboardInterrupt)
     
@@ -72,7 +72,7 @@ async def test_handle_model_cmd_abort_prompt(mock_env: Path, tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_handle_model_cmd_missing_env(tmp_path: Path):
-    """Test behavior when .env doesn't exist."""
+    """验证 .env 不存在时的行为。"""
     prompt_fn = AsyncMock()
     with patch("src.minibot.ui.cmd_model.print_system") as mock_print:
         await handle_model_cmd("config", tmp_path, prompt_fn)

@@ -1,4 +1,4 @@
-"""Structured memory tools for Minibot."""
+"""MiniBot 结构化记忆工具。"""
 
 from __future__ import annotations
 
@@ -14,10 +14,12 @@ class ReadMemoryTool(BaseTool):
     description = "Read a memory node or system view by URI."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定读取记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明读取记忆所需的 URI。"""
         return {
             "type": "object",
             "properties": {
@@ -27,6 +29,7 @@ class ReadMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """按 URI 读取记忆条目。"""
         return self.memory_manager.read(kwargs["uri"])
 
 
@@ -35,10 +38,12 @@ class CreateMemoryTool(BaseTool):
     description = "Create a folder or memory node inside the active namespace."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定创建记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明创建记忆条目的字段。"""
         return {
             "type": "object",
             "properties": {
@@ -55,6 +60,7 @@ class CreateMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """创建记忆条目并返回其标识与创建信息。"""
         node = self.memory_manager.create_memory(
             parent_uri=kwargs.get("parent_uri"),
             title=kwargs["title"],
@@ -73,10 +79,12 @@ class UpdateMemoryTool(BaseTool):
     description = "Update memory node metadata or replace full content."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定更新记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明更新记忆所需的 URI 和待更新字段。"""
         return {
             "type": "object",
             "properties": {
@@ -93,6 +101,7 @@ class UpdateMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """按 URI 更新记忆条目的字段。"""
         uri = kwargs.pop("uri")
         node = self.memory_manager.update_memory(uri, **kwargs)
         return f"Updated {node.uri}"
@@ -103,10 +112,12 @@ class EditMemoryTool(BaseTool):
     description = "Edit memory content locally via replace_text or append_text."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定编辑记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明编辑记忆文本所需的 URI 和编辑参数。"""
         return {
             "type": "object",
             "properties": {
@@ -120,6 +131,7 @@ class EditMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """按 URI 执行记忆编辑操作并返回结果。"""
         uri = kwargs.pop("uri")
         node = self.memory_manager.edit_memory(uri, **kwargs)
         return f"Edited {node.uri}"
@@ -130,10 +142,12 @@ class DeleteMemoryTool(BaseTool):
     description = "Delete a memory node by URI."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定删除记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明删除记忆所需的 URI。"""
         return {
             "type": "object",
             "properties": {"uri": {"type": "string"}},
@@ -141,6 +155,7 @@ class DeleteMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """按 URI 删除记忆条目。"""
         self.memory_manager.delete_memory(kwargs["uri"])
         return f"Deleted {kwargs['uri']}"
 
@@ -150,10 +165,12 @@ class SearchMemoryTool(BaseTool):
     description = "Search memory nodes inside the active namespace."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定搜索记忆使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明记忆搜索的查询文本、筛选和结果限制参数。"""
         return {
             "type": "object",
             "properties": {
@@ -173,6 +190,7 @@ class SearchMemoryTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """按查询与筛选条件搜索记忆，格式化结果供模型读取。"""
         results = self.memory_manager.search(
             kwargs["query"],
             limit=int(kwargs.get("limit", 8)),
@@ -199,10 +217,12 @@ class ManageTriggersTool(BaseTool):
     description = "Add or remove glossary triggers for a memory node."
 
     def __init__(self, memory_manager: MemoryManager):
+        """绑定管理记忆触发器使用的管理器。"""
         self.memory_manager = memory_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明列出、设置或移除记忆触发器所需的参数。"""
         return {
             "type": "object",
             "properties": {
@@ -214,6 +234,7 @@ class ManageTriggersTool(BaseTool):
         }
 
     async def execute(self, **kwargs) -> str:
+        """调用管理器执行触发器操作并返回处理结果。"""
         payload = self.memory_manager.manage_triggers(
             kwargs["uri"],
             add=kwargs.get("add"),

@@ -1,4 +1,4 @@
-"""Bash tool implementation."""
+"""Bash 工具实现。"""
 
 from pathlib import Path
 import math
@@ -13,7 +13,7 @@ from ...teams.context import get_team_execution_context
 
 
 class BashTool(ResultTool):
-    """Execute shell commands."""
+    """执行 Shell 命令。"""
 
     name = "bash"
     description = "Run shell command."
@@ -24,6 +24,7 @@ class BashTool(ResultTool):
         self, workdir: Path, timeout: int | float = 60, *,
         config: BashConfig | None = None, backend: WorkspaceBackend | None = None,
     ):
+        """校验命令超时，绑定工作区及命令执行后端。"""
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("timeout must be a positive finite number")
         self.workdir = workdir
@@ -33,6 +34,7 @@ class BashTool(ResultTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明 Bash 命令的模型输入参数。"""
         return {
             "type": "object",
             "properties": {
@@ -45,10 +47,10 @@ class BashTool(ResultTool):
         }
 
     async def execute_result(self, command: str) -> ToolOutcome:
-        """Execute a shell command."""
+        """执行一条 Shell 命令。"""
         if self.config.backend == "disabled":
             return ToolOutcome("Error: Bash execution is disabled", "refused")
-        # Safety check
+        # 执行安全检查。
         for pattern in self.DANGEROUS_PATTERNS:
             if pattern in command:
                 return ToolOutcome(f"Error: Dangerous command pattern detected: {pattern}", "refused")

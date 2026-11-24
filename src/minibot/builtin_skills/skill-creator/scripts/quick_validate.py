@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quick structural validation for Minibot skills."""
+"""快速校验 MiniBot 技能的结构。"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ RESOURCE_DIRS = {"scripts", "references", "assets"}
 
 
 def validate_skill(skill_path: str | Path) -> tuple[bool, str]:
-    """Validate the minimal structure and frontmatter for a skill directory."""
+    """校验技能目录的最小结构和头部元数据。"""
     skill_dir = Path(skill_path)
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.exists():

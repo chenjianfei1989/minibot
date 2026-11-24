@@ -1,4 +1,4 @@
-"""Persistence for external platform connections."""
+"""外部平台连接配置的持久化。"""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def platform_kind_label(kind: str) -> str:
 
 
 class PlatformStore:
-    """JSON-backed registry for external platform connections."""
+    """以 JSON 保存外部平台连接的注册表。"""
 
     def __init__(self, *, app_home: Path) -> None:
         self.app_home = app_home.resolve()
@@ -185,7 +185,7 @@ class PlatformStore:
 
 
 class ConversationMapStore:
-    """Persistence for external-chat to local-session mappings."""
+    """持久化外部聊天与本地会话之间的映射。"""
 
     def __init__(self, *, app_home: Path, platform_id: str) -> None:
         self.app_home = app_home.resolve()

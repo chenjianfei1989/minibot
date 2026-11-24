@@ -1,4 +1,4 @@
-"""Tests for SessionStore JSONL persistence."""
+"""测试 SessionStore 的 JSONL 持久化。"""
 
 import json
 import tempfile

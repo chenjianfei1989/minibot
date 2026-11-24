@@ -252,6 +252,6 @@ async def test_escaped_session_pipes_do_not_hang_cancellation(tmp_path):
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(task, 3)
         assert not process_alive(shell)
-        os.kill(escaped, 0)  # The detached session is deliberately outside group ownership.
+        os.kill(escaped, 0)  # 此处有意让分离的会话脱离进程组的管理。
     finally:
         os.kill(escaped, 9)

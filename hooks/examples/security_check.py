@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Security check hook - blocks dangerous commands."""
+"""安全检查钩子，用于拦截危险命令。"""
 
 import json
 import os
@@ -23,7 +23,7 @@ def main():
     tool_args = os.environ.get("HOOK_TOOL_ARGS", "{}")
 
     if tool_name != "bash":
-        # Only check bash commands
+        # 仅检查 Bash 命令。
         print(json.dumps({"success": True}))
         return
 

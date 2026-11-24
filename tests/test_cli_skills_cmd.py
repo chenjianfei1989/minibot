@@ -24,7 +24,7 @@ def test_bot_json_skills_disabled_roundtrip(tmp_path: Path) -> None:
     save_skills_disabled(app_home, ["b", "a", "a", ""])
     assert load_skills_disabled(app_home) == ["a", "b"]
 
-    # Ensure unrelated keys are preserved.
+    # 确保保留无关配置键。
     text = (app_home / "bot.json").read_text(encoding="utf-8")
     assert '"llm"' in text
 

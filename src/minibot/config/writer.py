@@ -1,8 +1,6 @@
-"""Config writer — persist runtime changes back to YAML files.
+"""配置写入工具，将运行时修改持久化到 YAML 文件。
 
-Supports source-aware write-back: detects whether a config item originates
-from the global (~/.minibot/config/) or project (project/config/) file and
-writes back to the correct one.
+按配置项来源回写，识别它来自全局目录（~/.minibot/config/）还是项目目录（project/config/），并写回对应文件。
 """
 
 from pathlib import Path
@@ -12,7 +10,7 @@ import yaml
 
 
 def _load_raw(path: Path) -> dict:
-    """Load YAML preserving all top-level structure."""
+    """加载 YAML，保留全部顶层结构。"""
     if not path.exists():
         return {}
     with open(path, encoding="utf-8") as f:
@@ -20,13 +18,14 @@ def _load_raw(path: Path) -> dict:
 
 
 def _save_raw(path: Path, data: dict) -> None:
-    """Write dict back to YAML, preserving readable formatting."""
+    """将字典写回 YAML，保留易于阅读的格式。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
 def _deep_merge(target: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    """递归合并映射配置，将补丁字段写入目标并保留无关键。"""
     for key, value in patch.items():
         if isinstance(value, dict) and isinstance(target.get(key), dict):
             _deep_merge(target[key], value)
@@ -36,7 +35,7 @@ def _deep_merge(target: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]
 
 
 def update_default_config(config_path: Path, patch: dict[str, Any]) -> dict[str, Any]:
-    """Patch global default config YAML and return saved data."""
+    """更新全局默认 YAML 配置并返回保存的数据。"""
     data = _load_raw(config_path)
     _deep_merge(data, patch)
     _save_raw(config_path, data)
@@ -44,7 +43,7 @@ def update_default_config(config_path: Path, patch: dict[str, Any]) -> dict[str,
 
 
 def upsert_env_value(env_path: Path, key: str, value: str | None) -> None:
-    """Upsert one dotenv key without clobbering unrelated lines."""
+    """新增或更新一个 dotenv 键，保留其他行。"""
     env_path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     if env_path.exists():
@@ -76,7 +75,7 @@ def save_subagents_config(
     config_path: Path,
     agents: dict[str, dict[str, Any]],
 ) -> None:
-    """Write subagents section to the config file."""
+    """将子 Agent 配置段写入配置文件。"""
     data = _load_raw(config_path)
     data["subagents"] = agents
     _save_raw(config_path, data)
@@ -87,7 +86,7 @@ def save_mcp_server_enabled(
     server_name: str,
     enabled: bool,
 ) -> None:
-    """Toggle ``enabled`` for a single MCP server in the config file."""
+    """切换配置文件中单个 MCP 服务的 ``enabled`` 状态。"""
     data = _load_raw(config_path)
     servers = data.get("servers", [])
     for server in servers:
@@ -103,7 +102,7 @@ def update_mcp_server_config(
     server_name: str,
     patch: dict[str, Any],
 ) -> dict[str, Any]:
-    """Update one MCP server block in the config file and return the saved mapping."""
+    """更新配置文件中单个 MCP 服务的配置块，返回保存后的映射。"""
     data = _load_raw(config_path)
     servers = data.get("servers", [])
 

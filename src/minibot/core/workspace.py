@@ -1,4 +1,4 @@
-"""Stable identity for attaching a durable run to an execution workspace."""
+"""用于把持久化运行接回原工作区的稳定标识。"""
 
 from dataclasses import dataclass
 from hashlib import sha256
@@ -17,6 +17,7 @@ class WorkspaceIdentity:
     def from_root(
         cls, root: Path, backend: str = "local", *, profile: tuple[str, ...] = (),
     ) -> "WorkspaceIdentity":
+        """哈希规范化根路径、后端和执行配置，生成工作区标识。"""
         identity = json.dumps([1, str(root.resolve()), backend, profile], ensure_ascii=True)
         return cls(sha256(identity.encode("ascii")).hexdigest())
 
@@ -28,10 +29,12 @@ class DockerContainer:
 
 
 def legacy_workspace_identity(config: Config) -> WorkspaceIdentity:
+    """根据规范化路径生成兼容旧记录的工作区标识。"""
     return trusted_workspace_identity(config.workdir, config.tools.bash)
 
 
 def trusted_workspace_identity(root: Path, bash: BashConfig) -> WorkspaceIdentity:
+    """为可信本地工作区生成稳定标识。"""
     profile = ("bash", bash.backend)
     if bash.backend == "docker":
         profile += (bash.image, str(bash.memory_mb), str(float(bash.cpus)), str(bash.pids_limit))
@@ -39,6 +42,7 @@ def trusted_workspace_identity(root: Path, bash: BashConfig) -> WorkspaceIdentit
 
 
 def restricted_root_key(root: Path) -> tuple[int, int]:
+    """取得受限工作区根目录的文件系统标识，用于检测目录是否被替换。"""
     try:
         current = root.lstat()
     except OSError as exc:
@@ -49,6 +53,7 @@ def restricted_root_key(root: Path) -> tuple[int, int]:
 
 
 def configured_workspace_identity(config: Config) -> WorkspaceIdentity:
+    """按当前工作区配置选择受限或可信本地模式的标识方案。"""
     policy = config.workspace
     if not policy.restricted:
         return legacy_workspace_identity(config)

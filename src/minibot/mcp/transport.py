@@ -1,4 +1,4 @@
-"""MCP transport implementations."""
+"""MCP 传输方式实现。"""
 
 import asyncio
 import json
@@ -13,37 +13,37 @@ import httpx
 
 
 class MCPTransport(ABC):
-    """Abstract base class for MCP transports."""
+    """MCP 传输方式的抽象基类。"""
 
     @abstractmethod
     async def connect(self) -> None:
-        """Establish connection."""
+        """建立连接。"""
         pass
 
     @abstractmethod
     async def disconnect(self) -> None:
-        """Close connection."""
+        """关闭连接。"""
         pass
 
     @abstractmethod
     async def send(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Send a message and wait for response."""
+        """发送消息并等待响应。"""
         pass
 
     @abstractmethod
     async def notify(self, message: dict[str, Any]) -> None:
-        """Send a JSON-RPC notification (no response expected)."""
+        """发送无需等待响应的 JSON-RPC 通知。"""
         pass
 
     @property
     @abstractmethod
     def is_connected(self) -> bool:
-        """Check if transport is connected."""
+        """检查传输连接是否已建立。"""
         pass
 
 
 class StdioTransport(MCPTransport):
-    """Transport for stdio-based MCP servers."""
+    """用于 stdio MCP 服务的传输方式。"""
 
     def __init__(
         self,
@@ -52,6 +52,7 @@ class StdioTransport(MCPTransport):
         env: dict[str, str] | None = None,
         cwd: Path | None = None,
     ):
+        """保存 stdio 服务的启动命令、环境和待处理请求状态。"""
         self.command = command
         self.args = args or []
         self.env = env or {}
@@ -63,7 +64,7 @@ class StdioTransport(MCPTransport):
         self._read_task: asyncio.Task | None = None
 
     def _resolve_command(self) -> str:
-        """Resolve a command into an executable path that works on the current OS."""
+        """将命令解析为当前操作系统可用的可执行文件路径。"""
         command = (self.command or "").strip()
         if not command:
             raise FileNotFoundError("MCP stdio command is not configured")
@@ -87,10 +88,11 @@ class StdioTransport(MCPTransport):
 
     @property
     def is_connected(self) -> bool:
+        """判断 stdio 服务进程是否仍处于运行状态。"""
         return self._process is not None and self._process.returncode is None
 
     async def connect(self) -> None:
-        """Start the MCP server process."""
+        """启动 MCP 服务进程。"""
         env = dict(os.environ)
         env.update(self.env)
         executable = self._resolve_command()
@@ -105,11 +107,11 @@ class StdioTransport(MCPTransport):
             cwd=self.cwd,
         )
 
-        # Start reading responses
+        # 开始读取响应。
         self._read_task = asyncio.create_task(self._read_loop())
 
     async def disconnect(self) -> None:
-        """Stop the MCP server process."""
+        """停止 MCP 服务进程。"""
         if self._read_task:
             self._read_task.cancel()
             try:
@@ -125,7 +127,7 @@ class StdioTransport(MCPTransport):
                 self._process.kill()
 
     async def send(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Send a JSON-RPC message and wait for response."""
+        """发送 JSON-RPC 消息并等待响应。"""
         if not self.is_connected:
             raise RuntimeError("Transport not connected")
 
@@ -138,16 +140,16 @@ class StdioTransport(MCPTransport):
             **message,
         }
 
-        # Create future for response
+        # 为响应创建 Future。
         future: asyncio.Future = asyncio.Future()
         self._pending[request_id] = future
 
-        # Send request
+        # 发送请求。
         data = json.dumps(request) + "\n"
         self._process.stdin.write(data.encode())
         await self._process.stdin.drain()
 
-        # Wait for response
+        # 等待响应。
         try:
             return await asyncio.wait_for(future, timeout=30)
         except asyncio.TimeoutError:
@@ -155,7 +157,7 @@ class StdioTransport(MCPTransport):
             raise
 
     async def notify(self, message: dict[str, Any]) -> None:
-        """Send a JSON-RPC notification (no response expected)."""
+        """发送无需等待响应的 JSON-RPC 通知。"""
         if not self.is_connected:
             raise RuntimeError("Transport not connected")
 
@@ -168,7 +170,7 @@ class StdioTransport(MCPTransport):
         await self._process.stdin.drain()
 
     async def _read_loop(self) -> None:
-        """Read responses from the server."""
+        """读取服务端响应。"""
         while self.is_connected:
             try:
                 line = await self._process.stdout.readline()
@@ -194,9 +196,10 @@ class StdioTransport(MCPTransport):
 
 
 class SSETransport(MCPTransport):
-    """Transport for SSE-based MCP servers."""
+    """用于 SSE MCP 服务的传输方式。"""
 
     def __init__(self, url: str, headers: dict[str, str] | None = None):
+        """保存 SSE 端点并初始化连接及请求状态。"""
         self.url = url
         self.headers = headers or {}
         self._client: httpx.AsyncClient | None = None
@@ -204,10 +207,11 @@ class SSETransport(MCPTransport):
 
     @property
     def is_connected(self) -> bool:
+        """判断 SSE 传输当前是否已连接。"""
         return self._connected and self._client is not None
 
     async def connect(self) -> None:
-        """Establish HTTP connection."""
+        """建立 HTTP 连接。"""
         self._client = httpx.AsyncClient(
             base_url=self.url,
             headers=self.headers,
@@ -216,14 +220,14 @@ class SSETransport(MCPTransport):
         self._connected = True
 
     async def disconnect(self) -> None:
-        """Close HTTP connection."""
+        """关闭 HTTP 连接。"""
         if self._client:
             await self._client.aclose()
             self._client = None
         self._connected = False
 
     async def send(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Send a request via HTTP POST."""
+        """通过 HTTP POST 发送请求。"""
         if not self.is_connected:
             raise RuntimeError("Transport not connected")
 
@@ -244,7 +248,7 @@ class SSETransport(MCPTransport):
         return data.get("result", {})
 
     async def notify(self, message: dict[str, Any]) -> None:
-        """Send a JSON-RPC notification via HTTP POST."""
+        """通过 HTTP POST 发送 JSON-RPC 通知。"""
         if not self.is_connected:
             raise RuntimeError("Transport not connected")
 

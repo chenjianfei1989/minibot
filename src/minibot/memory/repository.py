@@ -1,4 +1,4 @@
-"""Structured memory repository."""
+"""结构化记忆数据仓库。"""
 
 from __future__ import annotations
 
@@ -25,14 +25,17 @@ from .models import MemoryNamespace, MemoryNode
 
 
 def _utc_now() -> str:
+    """生成持久化时间字段使用的 UTC 时间戳。"""
     return datetime.now(UTC).isoformat()
 
 
 def _new_id(prefix: str) -> str:
+    """生成带类型前缀的记录 ID。"""
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
 def _normalize_term(term: str) -> str:
+    """去除首尾空白、统一大小写并压缩术语内部空白。"""
     return " ".join(term.strip().lower().split())
 
 
@@ -45,20 +48,23 @@ class MemoryNodeBundle:
 
 
 class MemoryRepository:
-    """Small repository over SQLite/PostgreSQL for structured memory."""
+    """基于 SQLite 或 PostgreSQL 的轻量结构化记忆仓库。"""
 
     def __init__(self, *, backend: str, database: MemoryDatabase) -> None:
+        """绑定记忆数据库及其后端类型。"""
         self.backend = backend
         self.database = database
         self.database_path = database.database_path
 
     @classmethod
     def from_config(cls, config: MemoryConfig, *, app_home: Path) -> "MemoryRepository":
+        """根据记忆配置创建使用对应数据库后端的仓库。"""
         backend = (config.backend or "sqlite").strip().lower()
         database = create_memory_db(config, app_home=app_home)
         return cls(backend=backend, database=database)
 
     def create_namespace(self, *, slug: str, title: str, description: str | None = None) -> MemoryNamespace:
+        """持久化一个新的记忆命名空间。"""
         with self.database.session_factory() as session:
             existing = self._get_namespace_row_by_slug(session, slug)
             if existing is not None:
@@ -77,6 +83,7 @@ class MemoryRepository:
             return self._row_to_namespace(row)
 
     def list_namespaces(self) -> list[MemoryNamespace]:
+        """读取已存在的命名空间列表。"""
         with self.database.session_factory() as session:
             rows = session.exec(
                 select(MemoryNamespaceRow).order_by(MemoryNamespaceRow.slug)
@@ -84,6 +91,7 @@ class MemoryRepository:
             return [self._row_to_namespace(row) for row in rows]
 
     def get_namespace_by_slug(self, slug: str) -> MemoryNamespace | None:
+        """按 slug 查找命名空间。"""
         with self.database.session_factory() as session:
             row = self._get_namespace_row_by_slug(session, slug)
             if row is None:
@@ -103,6 +111,7 @@ class MemoryRepository:
         is_core: bool = False,
         priority: int = 0,
     ) -> MemoryNode:
+        """创建记忆节点并同步其版本和搜索索引。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             parent = self._require_parent(session, namespace.id, parent_uri)
@@ -135,6 +144,7 @@ class MemoryRepository:
             return node
 
     def update_node(self, namespace_slug: str, uri: str, **fields: Any) -> MemoryNode:
+        """更新节点信息，按变更维护版本、URI 与索引。"""
         with self.database.session_factory() as session:
             node_row = self._require_node_row(session, namespace_slug, uri)
             parent_id = node_row.parent_id
@@ -175,6 +185,7 @@ class MemoryRepository:
             return node
 
     def delete_node(self, namespace_slug: str, uri: str) -> None:
+        """删除指定节点及其子树和关联索引记录。"""
         with self.database.session_factory() as session:
             node_row = self._require_node_row(session, namespace_slug, uri)
             now = _utc_now()
@@ -202,6 +213,7 @@ class MemoryRepository:
             session.commit()
 
     def get_node_by_uri(self, namespace_slug: str, uri: str) -> MemoryNode | None:
+        """在指定命名空间中按 URI 查询节点。"""
         with self.database.session_factory() as session:
             row = self._find_node_row(session, namespace_slug, uri)
             if row is None:
@@ -209,6 +221,7 @@ class MemoryRepository:
             return self._row_to_node(row)
 
     def get_node_bundle(self, namespace_slug: str, uri: str) -> MemoryNodeBundle | None:
+        """读取节点以及渲染详情所需的版本、触发词等数据。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             row = session.exec(
@@ -247,6 +260,7 @@ class MemoryRepository:
             )
 
     def list_nodes(self, namespace_slug: str) -> list[MemoryNode]:
+        """列出指定命名空间中的记忆节点。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             rows = session.exec(
@@ -260,6 +274,7 @@ class MemoryRepository:
             return [self._row_to_node(row) for row in rows]
 
     def list_children(self, namespace_slug: str, parent_uri: str | None = None) -> list[MemoryNode]:
+        """读取指定父节点的直属子节点。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             statement = select(MemoryNodeRow).where(
@@ -277,6 +292,7 @@ class MemoryRepository:
             return [self._row_to_node(row) for row in rows]
 
     def list_core_nodes(self, namespace_slug: str) -> list[MemoryNode]:
+        """读取指定命名空间中符合核心记忆条件的节点。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             rows = session.exec(
@@ -291,6 +307,7 @@ class MemoryRepository:
             return [self._row_to_node(row) for row in rows]
 
     def list_recent_nodes(self, namespace_slug: str, *, limit: int = 5) -> list[MemoryNode]:
+        """按最近访问或更新时间读取指定命名空间中的节点。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             recency = case(
@@ -312,6 +329,7 @@ class MemoryRepository:
             return [self._row_to_node(row) for row in rows]
 
     def list_versions(self, node_id: str) -> list[dict[str, Any]]:
+        """列出节点历史版本。"""
         with self.database.session_factory() as session:
             rows = session.exec(
                 select(MemoryNodeVersionRow)
@@ -329,11 +347,13 @@ class MemoryRepository:
             ]
 
     def list_triggers(self, namespace_slug: str, uri: str) -> list[str]:
+        """列出指定节点已配置的触发词。"""
         with self.database.session_factory() as session:
             node = self._require_node_row(session, namespace_slug, uri)
             return self._trigger_terms(session, node.id)
 
     def glossary_entries(self, namespace_slug: str) -> list[dict[str, Any]]:
+        """生成命名空间中的术语及其关联节点信息。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             rows = session.exec(
@@ -358,6 +378,7 @@ class MemoryRepository:
         add: list[str] | None = None,
         remove: list[str] | None = None,
     ) -> list[str]:
+        """添加或移除节点触发词，并同步该节点的搜索文档。"""
         add = add or []
         remove = remove or []
         with self.database.session_factory() as session:
@@ -416,6 +437,7 @@ class MemoryRepository:
         node_types: list[str] | None = None,
         include_folders: bool = False,
     ) -> list[dict[str, Any]]:
+        """获取符合命名空间和筛选条件的搜索文档。"""
         with self.database.session_factory() as session:
             namespace = self._require_namespace_row(session, namespace_slug)
             rows = session.exec(
@@ -467,6 +489,7 @@ class MemoryRepository:
             return filtered
 
     def touch_node(self, namespace_slug: str, uri: str) -> None:
+        """更新指定节点的最近访问时间。"""
         with self.database.session_factory() as session:
             row = self._require_node_row(session, namespace_slug, uri)
             row.last_accessed_at = _utc_now()
@@ -474,11 +497,13 @@ class MemoryRepository:
             session.commit()
 
     def _get_namespace_row_by_slug(self, session: Session, slug: str) -> MemoryNamespaceRow | None:
+        """在已有数据库会话中按 slug 查询命名空间记录。"""
         return session.exec(
             select(MemoryNamespaceRow).where(MemoryNamespaceRow.slug == slug)
         ).first()
 
     def _require_namespace_row(self, session: Session, slug: str) -> MemoryNamespaceRow:
+        """取得命名空间记录，找不到时抛出错误。"""
         namespace = self._get_namespace_row_by_slug(session, slug)
         if namespace is None:
             raise ValueError(f"Unknown namespace: {slug}")
@@ -490,6 +515,7 @@ class MemoryRepository:
         namespace_id: str,
         parent_uri: str | None,
     ) -> MemoryNodeRow | None:
+        """校验指定父 URI 并取得对应节点，允许根节点没有父级。"""
         if parent_uri is None:
             return None
         row = session.exec(
@@ -509,6 +535,7 @@ class MemoryRepository:
         namespace_slug: str,
         uri: str,
     ) -> MemoryNodeRow | None:
+        """在指定命名空间中查询 URI 对应的节点记录。"""
         namespace = self._require_namespace_row(session, namespace_slug)
         return session.exec(
             select(MemoryNodeRow).where(
@@ -519,6 +546,7 @@ class MemoryRepository:
         ).first()
 
     def _require_node_row(self, session: Session, namespace_slug: str, uri: str) -> MemoryNodeRow:
+        """取得指定 URI 的节点记录，找不到时抛出错误。"""
         row = self._find_node_row(session, namespace_slug, uri)
         if row is None:
             raise ValueError(f"Unknown memory URI: {uri}")
@@ -531,6 +559,7 @@ class MemoryRepository:
         uri: str,
         exclude_node_id: str | None = None,
     ) -> None:
+        """检查候选 URI 是否能在该命名空间内使用。"""
         row = session.exec(
             select(MemoryNodeRow.id).where(
                 MemoryNodeRow.namespace_id == namespace_id,
@@ -545,6 +574,7 @@ class MemoryRepository:
         raise ValueError(f"Memory URI already exists: {uri}")
 
     def _compose_uri(self, parent_uri: str | None, slug: str) -> str:
+        """根据父级 URI 和规范化标识拼出节点 URI。"""
         slug = slug.strip().strip("/")
         if not slug:
             raise ValueError("slug must be non-empty")
@@ -553,6 +583,7 @@ class MemoryRepository:
         return f"{parent_uri.rstrip('/')}/{slug}"
 
     def _parent_uri_by_id(self, parent_id: str | None, *, session: Session | None = None) -> str | None:
+        """按父节点 ID 查询其 URI。"""
         if not parent_id:
             return None
         if session is not None:
@@ -572,6 +603,7 @@ class MemoryRepository:
         old_uri: str,
         new_uri: str,
     ) -> None:
+        """节点路径变化后，同步更新后代节点的 URI。"""
         rows = session.exec(
             select(MemoryNodeRow)
             .where(
@@ -597,6 +629,7 @@ class MemoryRepository:
         operation: str,
         change: dict[str, Any],
     ) -> None:
+        """为当前节点状态写入一个新的历史版本。"""
         total = session.exec(
             select(func.count()).select_from(MemoryNodeVersionRow).where(MemoryNodeVersionRow.node_id == node.id)
         ).one()
@@ -622,6 +655,7 @@ class MemoryRepository:
         )
 
     def _delete_search_document(self, session: Session, node_id: str) -> None:
+        """删除指定节点已有的搜索文档。"""
         existing = session.exec(
             select(MemorySearchDocumentRow).where(MemorySearchDocumentRow.node_id == node_id)
         ).first()
@@ -629,6 +663,7 @@ class MemoryRepository:
             session.delete(existing)
 
     def _upsert_search_document(self, session: Session, node: MemoryNode) -> None:
+        """生成或更新包含节点和触发词的搜索文档。"""
         triggers = self._trigger_terms(session, node.id)
         search_text = " ".join(
             part for part in (node.uri, node.title, node.node_type or "", node.content, " ".join(triggers)) if part
@@ -660,6 +695,7 @@ class MemoryRepository:
         session.add(existing)
 
     def _trigger_terms(self, session: Session, node_id: str) -> list[str]:
+        """读取与节点关联的触发词文本。"""
         return session.exec(
             select(MemoryTriggerRow.term)
             .where(MemoryTriggerRow.node_id == node_id)
@@ -667,6 +703,7 @@ class MemoryRepository:
         ).all()
 
     def _row_to_namespace(self, row: MemoryNamespaceRow) -> MemoryNamespace:
+        """把数据库中的命名空间记录转换为领域对象。"""
         return MemoryNamespace(
             id=row.id,
             slug=row.slug,
@@ -675,6 +712,7 @@ class MemoryRepository:
         )
 
     def _row_to_node(self, row: MemoryNodeRow) -> MemoryNode:
+        """把数据库中的记忆节点记录转换为领域对象。"""
         return MemoryNode(
             id=row.id,
             namespace_id=row.namespace_id,

@@ -1,1 +1,1 @@
-"""Session management with JSONL persistence."""
+"""采用 JSONL 持久化的会话管理。"""

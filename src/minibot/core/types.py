@@ -1,4 +1,4 @@
-"""Type definitions for Minibot."""
+"""MiniBot 类型定义。"""
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 @dataclass
 class ContentBlock:
-    """A content block in a message."""
+    """消息中的一个内容块。"""
     type: Literal["text", "tool_use", "tool_result"]
     text: str | None = None
     id: str | None = None
@@ -18,14 +18,14 @@ class ContentBlock:
 
 @dataclass
 class Message:
-    """A message in the conversation."""
+    """会话中的一条消息。"""
     role: Literal["user", "assistant", "system"]
     content: str | list[ContentBlock | dict]
 
 
 @dataclass
 class ToolCall:
-    """A tool call from the model."""
+    """模型发出的一次工具调用请求。"""
     id: str
     name: str
     input: dict[str, Any]
@@ -33,7 +33,7 @@ class ToolCall:
 
 @dataclass
 class ToolResult:
-    """Result of a tool execution."""
+    """一次工具执行的结果。"""
     tool_use_id: str
     content: str
     is_error: bool = False
@@ -41,13 +41,13 @@ class ToolResult:
 
 @dataclass
 class ToolDefinition:
-    """Definition of a tool for the API."""
+    """提供给 API 的工具定义。"""
     name: str
     description: str
     input_schema: dict[str, Any]
 
     def to_dict(self) -> dict:
-        """Convert to OpenAI/GLM API-compatible dict."""
+        """转换为兼容 OpenAI 或 GLM API 的字典。"""
         return {
             "type": "function",
             "function": {

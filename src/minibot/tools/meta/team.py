@@ -1,4 +1,4 @@
-"""Team orchestration tools."""
+"""团队编排工具。"""
 
 from __future__ import annotations
 
@@ -12,10 +12,12 @@ from ...teams.runtime import TeamRuntime
 
 
 def _json(data: Any) -> str:
+    """将团队数据序列化为可读的 JSON 文本。"""
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
 def _ctx() -> tuple[TeamExecutionContext | None, str | None]:
+    """取得当前团队工具的执行上下文，缺失时拒绝调用。"""
     ctx = get_team_execution_context()
     if ctx is None:
         return None, "Error: Team execution context missing"
@@ -23,6 +25,7 @@ def _ctx() -> tuple[TeamExecutionContext | None, str | None]:
 
 
 def _actor_id(ctx: TeamExecutionContext) -> tuple[str | None, str | None]:
+    """根据运行角色与成员信息确定当前操作方的 ID。"""
     if ctx.role == "lead":
         return "lead", None
     if ctx.member_id:
@@ -31,7 +34,7 @@ def _actor_id(ctx: TeamExecutionContext) -> tuple[str | None, str | None]:
 
 
 class TeamCreateTool(ResultTool):
-    """Create a team and spawn teammates."""
+    """创建团队并启动队友。"""
 
     name = "TeamCreate"
     description = "Create an in-process teammate team."
@@ -42,11 +45,13 @@ class TeamCreateTool(ResultTool):
         *,
         default_members: int,
     ):
+        """绑定创建团队使用的运行时。"""
         self.runtime = runtime
         self.default_members = default_members
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明创建团队的名称与成员配置。"""
         return {
             "type": "object",
             "properties": {
@@ -64,6 +69,7 @@ class TeamCreateTool(ResultTool):
         team_name: str = "default-team",
         member_count: int | None = None,
     ) -> ToolOutcome:
+        """检查调用方身份并创建团队，返回团队状态。"""
         try:
             ctx, err = _ctx()
             if err:
@@ -79,19 +85,22 @@ class TeamCreateTool(ResultTool):
 
 
 class TeamMembersTool(ResultTool):
-    """List team members and statuses."""
+    """列出团队成员及其状态。"""
 
     name = "TeamMembers"
     description = "List active team members and statuses."
 
     def __init__(self, runtime: TeamRuntime):
+        """绑定查询团队成员使用的运行时。"""
         self.runtime = runtime
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明成员查询无需传入参数。"""
         return {"type": "object", "properties": {}, "required": []}
 
     async def execute_result(self) -> ToolOutcome:
+        """读取团队成员及其状态。"""
         try:
             members = await self.runtime.list_members()
             return ToolOutcome(_json(members), "success")
@@ -100,7 +109,7 @@ class TeamMembersTool(ResultTool):
 
 
 class TeamTaskTool(ResultTool):
-    """Operate on team task board."""
+    """操作团队任务板。"""
 
     name = "TeamTask"
     description = "Manage team tasks: create/list/assign/claim/complete."
@@ -109,10 +118,12 @@ class TeamTaskTool(ResultTool):
         self,
         runtime: TeamRuntime,
     ):
+        """绑定管理共享任务板使用的运行时。"""
         self.runtime = runtime
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明任务板操作及其对应参数。"""
         return {
             "type": "object",
             "properties": {
@@ -138,6 +149,7 @@ class TeamTaskTool(ResultTool):
         assignee_id: str = "",
         note: str = "",
     ) -> ToolOutcome:
+        """按动作创建、查询、分派、认领或完成团队任务。"""
         try:
             ctx, err = _ctx()
             if err:
@@ -191,16 +203,18 @@ class TeamTaskTool(ResultTool):
 
 
 class TeamMessageTool(ResultTool):
-    """Send a direct team message."""
+    """向指定团队成员发送消息。"""
 
     name = "TeamMessage"
     description = "Send direct message to one team member."
 
     def __init__(self, runtime: TeamRuntime):
+        """绑定发送团队私信使用的运行时。"""
         self.runtime = runtime
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明接收者 ID 和私信文本。"""
         return {
             "type": "object",
             "properties": {
@@ -211,6 +225,7 @@ class TeamMessageTool(ResultTool):
         }
 
     async def execute_result(self, to_member_id: str, content: str) -> ToolOutcome:
+        """按当前成员身份发送私信。"""
         try:
             ctx, err = _ctx()
             if err:
@@ -229,16 +244,18 @@ class TeamMessageTool(ResultTool):
 
 
 class TeamBroadcastTool(ResultTool):
-    """Broadcast message to all team members."""
+    """向全部团队成员广播消息。"""
 
     name = "TeamBroadcast"
     description = "Broadcast message to all team members."
 
     def __init__(self, runtime: TeamRuntime):
+        """绑定向团队广播使用的运行时。"""
         self.runtime = runtime
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明广播内容参数。"""
         return {
             "type": "object",
             "properties": {
@@ -248,6 +265,7 @@ class TeamBroadcastTool(ResultTool):
         }
 
     async def execute_result(self, content: str) -> ToolOutcome:
+        """按当前成员身份向团队广播消息。"""
         try:
             ctx, err = _ctx()
             if err:
@@ -265,17 +283,19 @@ class TeamBroadcastTool(ResultTool):
 
 
 class TeamWaitTool(ResultTool):
-    """Wait for teammate/runtime events."""
+    """等待队友或团队运行时的事件。"""
 
     name = "TeamWait"
     description = "Wait for team events and return event batch."
 
     def __init__(self, runtime: TeamRuntime, *, default_timeout_sec: int):
+        """绑定等待团队事件使用的运行时。"""
         self.runtime = runtime
         self.default_timeout_sec = default_timeout_sec
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明事件等待超时及最多返回的条数。"""
         return {
             "type": "object",
             "properties": {
@@ -286,6 +306,7 @@ class TeamWaitTool(ResultTool):
         }
 
     async def execute_result(self, timeout_sec: int | None = None, max_events: int = 20) -> ToolOutcome:
+        """等待团队事件并将已收到的事件返回调用方。"""
         try:
             ctx, err = _ctx()
             if err:
@@ -302,16 +323,18 @@ class TeamWaitTool(ResultTool):
 
 
 class TeamShutdownTool(ResultTool):
-    """Shutdown one teammate or cleanup team."""
+    """关闭一个队友或清理整个团队。"""
 
     name = "TeamShutdown"
     description = "Shutdown one teammate or clean up entire team."
 
     def __init__(self, runtime: TeamRuntime):
+        """绑定停止队友或整个团队使用的运行时。"""
         self.runtime = runtime
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明可选的目标成员参数。"""
         return {
             "type": "object",
             "properties": {
@@ -321,6 +344,7 @@ class TeamShutdownTool(ResultTool):
         }
 
     async def execute_result(self, member_id: str = "") -> ToolOutcome:
+        """校验操作方权限后停止指定队友或关闭团队。"""
         try:
             ctx, err = _ctx()
             if err:

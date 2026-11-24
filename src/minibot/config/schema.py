@@ -1,4 +1,4 @@
-"""Configuration schema definitions."""
+"""配置结构定义。"""
 
 from dataclasses import dataclass, field, replace as dataclass_replace
 import math
@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 @dataclass
 class LLMConfig:
-    """LLM client configuration."""
+    """LLM 客户端配置。"""
     base_url: str | None = None
     api_key: str | None = None
     model: str = "gpt-4.1-mini"
@@ -18,6 +18,7 @@ class LLMConfig:
     max_tool_output_chars: int = 16000
 
     def __post_init__(self):
+        """校验单条模型工具输出的字符上限。"""
         if type(self.max_tool_output_chars) is not int or self.max_tool_output_chars < 32:
             raise ValueError("llm.max_tool_output_chars must be an integer of at least 32")
 
@@ -27,13 +28,14 @@ MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
 
 @dataclass(frozen=True)
 class ContextOffloadingConfig:
-    """Local storage limits for large text tool results."""
+    """大型文本工具结果的本地存储限制。"""
 
     enabled: bool = True
     threshold_chars: int | None = None
     max_artifact_bytes: int = 8 * 1024 * 1024
 
     def __post_init__(self):
+        """校验上下文卸载的启用开关、触发阈值与单个产物的字节上限。"""
         if type(self.enabled) is not bool:
             raise ValueError("context_offloading.enabled must be a boolean")
         threshold = self.threshold_chars
@@ -46,7 +48,7 @@ class ContextOffloadingConfig:
 
 @dataclass(frozen=True)
 class RuntimeBudgetConfig:
-    """Cumulative limits for one active execution segment."""
+    """单个活跃执行片段的累计限制。"""
 
     max_llm_calls: int = 30
     max_tool_calls: int = 100
@@ -55,6 +57,7 @@ class RuntimeBudgetConfig:
     max_output_tokens: int = 50_000
 
     def __post_init__(self):
+        """校验模型调用、工具调用、时间和 token 预算的取值。"""
         for name in ("max_llm_calls", "max_tool_calls", "max_input_tokens", "max_output_tokens"):
             value = getattr(self, name)
             if type(value) is not int or value <= 0:
@@ -69,7 +72,7 @@ ToolPermission = Literal["allow", "deny", "ask"]
 
 @dataclass(frozen=True)
 class ToolPermissionsConfig:
-    """Execution policy for model-requested tools."""
+    """模型请求调用工具时适用的执行策略。"""
 
     mode: Literal["off", "manual", "auto_review"] = "off"
     default: ToolPermission = "ask"
@@ -78,6 +81,7 @@ class ToolPermissionsConfig:
     timeout: int | float = 120
 
     def __post_init__(self):
+        """核对审批模式、默认策略、规则、路径及等待时长，并规范化可变配置。"""
         choices = ("allow", "deny", "ask")
         if self.mode not in ("off", "manual", "auto_review"):
             raise ValueError("tool_permissions.mode must be off, manual, or auto_review")
@@ -102,6 +106,7 @@ class ToolPermissionsConfig:
 
 
 def _validate_docker_limits(config: "BashConfig | WorkspaceConfig", prefix: str) -> None:
+    """校验 Docker 的内存、CPU 和进程数资源限制。"""
     if not isinstance(config.image, str) or not config.image.strip() or config.image.startswith("-"):
         raise ValueError(f"{prefix}.image must be a nonempty image reference")
     for name in ("memory_mb", "pids_limit"):
@@ -115,7 +120,7 @@ def _validate_docker_limits(config: "BashConfig | WorkspaceConfig", prefix: str)
 
 @dataclass(frozen=True)
 class BashConfig:
-    """Bash execution policy. Local execution remains the default."""
+    """Bash 执行策略，默认仍在本地执行。"""
     backend: Literal["disabled", "local", "docker"] = "local"
     image: str = "debian:bookworm"
     memory_mb: int = 512
@@ -123,6 +128,7 @@ class BashConfig:
     pids_limit: int = 128
 
     def __post_init__(self):
+        """校验 Bash 后端、可用镜像与 Docker 资源限制。"""
         if self.backend not in ("disabled", "local", "docker"):
             raise ValueError("tools.bash.backend must be disabled, local, or docker")
         _validate_docker_limits(self, "tools.bash")
@@ -130,7 +136,7 @@ class BashConfig:
 
 @dataclass(frozen=True)
 class WorkspaceConfig:
-    """Execution policy for the whole workspace. Docker applies to shell and file tools."""
+    """整个工作区的执行策略，Docker 模式适用于 Shell 和文件工具。"""
 
     backend: Literal["local", "docker"] = "local"
     image: str = "python:3.12-slim"
@@ -141,6 +147,7 @@ class WorkspaceConfig:
     timeout: int | float | None = None
 
     def __post_init__(self):
+        """校验工作区后端、网络模式、超时和容器资源限制。"""
         if self.backend not in ("local", "docker"):
             raise ValueError("workspace.backend must be local or docker")
         _validate_docker_limits(self, "workspace")
@@ -153,18 +160,20 @@ class WorkspaceConfig:
 
     @property
     def restricted(self) -> bool:
+        """判断是否将工作区命令和文件操作交给受限 Docker 后端。"""
         return self.backend == "docker"
 
 
 @dataclass
 class ToolsConfig:
-    """Tools configuration."""
+    """工具配置。"""
     enabled: list[str] = field(default_factory=lambda: ["*"])
     disabled: list[str] = field(default_factory=list)
     timeout: int | float = 60
     bash: BashConfig = field(default_factory=BashConfig)
 
     def __post_init__(self):
+        """校验工具超时和 Bash 子配置。"""
         if type(self.timeout) not in (int, float) or not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError("tools.timeout must be a positive finite number")
         if not isinstance(self.bash, BashConfig):
@@ -173,16 +182,16 @@ class ToolsConfig:
 
 @dataclass
 class HookDefinition:
-    """Single hook definition."""
+    """单个钩子的定义。"""
     event: str
-    handler: str  # Script path or module:function
+    handler: str  # 脚本路径或 module:function 格式的函数引用。
     timeout: int = 30
     enabled: bool = True
 
 
 @dataclass
 class HooksConfig:
-    """Hooks system configuration."""
+    """钩子系统配置。"""
     enabled: bool = True
     hooks_dir: Path = field(default_factory=lambda: Path("hooks"))
     hooks: list[HookDefinition] = field(default_factory=list)
@@ -190,20 +199,20 @@ class HooksConfig:
 
 @dataclass
 class MCPServerConfig:
-    """Single MCP server configuration."""
+    """单个 MCP 服务配置。"""
     name: str
-    transport: str = "stdio"  # stdio, sse, or streamable_http
-    command: str | None = None  # For stdio
+    transport: str = "stdio"  # 可选值为 stdio、sse 或 streamable_http。
+    command: str | None = None  # 用于 stdio。
     args: list[str] = field(default_factory=list)
     env: dict[str, str] = field(default_factory=dict)
-    url: str | None = None  # For sse and streamable_http
+    url: str | None = None  # 用于 sse 和 streamable_http。
     enabled: bool = True
     headers: dict[str, str] = field(default_factory=dict, repr=False)
 
 
 @dataclass
 class MemoryConfig:
-    """Memory system configuration."""
+    """记忆系统配置。"""
     enabled: bool = True
     memory_dir: str = "memory"
     backend: str = "sqlite"
@@ -215,14 +224,14 @@ class MemoryConfig:
 
 @dataclass
 class MCPConfig:
-    """MCP client configuration."""
+    """MCP 客户端配置。"""
     enabled: bool = True
     servers: list[MCPServerConfig] = field(default_factory=list)
 
 
 @dataclass
 class TeamsConfig:
-    """Agent teams configuration."""
+    """Agent 团队配置。"""
 
     enabled: bool = True
     max_members: int = 6
@@ -235,7 +244,7 @@ class TeamsConfig:
 
 @dataclass
 class SubagentConfig:
-    """Single subagent type override."""
+    """单种子 Agent 类型的覆盖配置。"""
     description: str | None = None
     tools: list[str] | None = None
     prompt: str | None = None
@@ -245,20 +254,20 @@ class SubagentConfig:
 
 @dataclass
 class SubagentsConfig:
-    """Subagents configuration."""
+    """子 Agent 配置。"""
     agents: dict[str, SubagentConfig] = field(default_factory=dict)
 
 
 @dataclass
 class SessionConfig:
-    """Session persistence configuration."""
+    """会话持久化配置。"""
     enabled: bool = True
-    sessions_dir: str = "sessions"  # relative to app_home
+    sessions_dir: str = "sessions"  # 相对于 app_home。
 
 
 @dataclass
 class Config:
-    """Main configuration."""
+    """主配置。"""
     workdir: Path = field(default_factory=Path.cwd)
     app_home: Path | None = None
     project_root: Path | None = None
@@ -282,6 +291,7 @@ class Config:
     durable_child_workspace: WorkspaceConfig = field(default_factory=lambda: WorkspaceConfig(backend="docker"))
 
     def __post_init__(self):
+        """校验持久化开关和持久化子运行的工作区隔离配置。"""
         if not isinstance(self.workspace, WorkspaceConfig):
             raise ValueError("workspace must be a WorkspaceConfig")
         child_workspace = self.durable_child_workspace

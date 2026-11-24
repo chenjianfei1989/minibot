@@ -1,7 +1,6 @@
-"""Event primitives for streaming/chat integrations.
+"""流式输出和聊天集成使用的基础事件类型。
 
-This module defines a small, stable event shape that SDK, server, and UI layers
-can share without depending on terminal rendering.
+SDK、服务端和界面共用这里定义的简洁稳定的事件结构，彼此无需依赖终端渲染。
 """
 
 from __future__ import annotations
@@ -29,12 +28,12 @@ EventType = Literal[
 
 
 class StreamEvent(TypedDict, total=False):
-    """A structured event emitted by the agent runtime."""
+    """Agent 运行时发出的结构化事件。"""
 
     type: EventType
     session_id: str
 
-    # Assistant streaming
+    # 助手流式输出。
     message_id: str
     parent_user_message_id: str | None
     delta_text: str
@@ -48,7 +47,7 @@ class StreamEvent(TypedDict, total=False):
     context_compacted: bool
     todo: dict[str, Any]
 
-    # Ask-user interactions
+    # 用户问答交互。
     question_id: str
     prompt: str
     options: list[dict[str, str]]
@@ -57,7 +56,7 @@ class StreamEvent(TypedDict, total=False):
     answer_text: str
     selected_option_value: str | None
 
-    # Tool execution
+    # 工具执行。
     tool_call_id: str
     tool_name: str
     tool_args: dict[str, Any]
@@ -70,33 +69,36 @@ class StreamEvent(TypedDict, total=False):
     tool_hook_phase: Literal["pre", "post"]
     note: str
 
-    # Tool approval
+    # 工具审批。
     approval_id: str
     approval_actor: str
     approval_preview: str
     approved: bool
     approval_source: Literal["policy", "human", "auto_review"]
 
-    # System / status
+    # 系统与状态事件。
     message: str
     data: dict[str, Any]
 
 
 class EventSink(Protocol):
     async def emit(self, event: StreamEvent) -> None:
-        """Consume one event."""
+        """消费一条事件。"""
 
 
 class NullEventSink:
     async def emit(self, event: StreamEvent) -> None:  # noqa: ARG002
+        """忽略收到的事件，供无需消费结构化事件的调用方使用。"""
         return None
 
 
 class AsyncQueueEventSink:
-    """Event sink backed by an asyncio.Queue."""
+    """以 asyncio.Queue 为底层队列的事件接收器。"""
 
     def __init__(self, queue: "asyncio.Queue[StreamEvent]") -> None:
+        """绑定用于接收流式事件的异步队列。"""
         self.queue = queue
 
     async def emit(self, event: StreamEvent) -> None:
+        """将一条结构化事件放入绑定的队列。"""
         await self.queue.put(event)

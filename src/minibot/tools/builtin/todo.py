@@ -1,4 +1,4 @@
-"""Todo management tool."""
+"""待办事项管理工具。"""
 
 from datetime import datetime, UTC
 from typing import Any
@@ -8,14 +8,15 @@ from ..result import ToolOutcome
 
 
 class TodoManager:
-    """Task list manager with constraints."""
+    """带约束的任务列表管理器。"""
 
     def __init__(self):
+        """初始化空的待办列表。"""
         self.items: list[dict] = []
         self.completed_at: str | None = None
 
     def update(self, items: list[dict]) -> str:
-        """Update the todo list."""
+        """更新待办事项列表。"""
         validated = []
         in_progress = 0
 
@@ -48,7 +49,7 @@ class TodoManager:
         return self.render()
 
     def render(self) -> str:
-        """Render the todo list as text."""
+        """将待办事项列表渲染为文本。"""
         if not self.items:
             return "No todos."
 
@@ -66,14 +67,14 @@ class TodoManager:
         return "\n".join(lines) + f"\n({done}/{len(self.items)} done)"
 
     def get_active_task(self) -> dict | None:
-        """Get the currently active task."""
+        """获取当前正在进行的任务。"""
         for item in self.items:
             if item["status"] == "in_progress":
                 return item
         return None
 
     def snapshot(self) -> dict[str, Any]:
-        """Return a structured snapshot suitable for live UI rendering."""
+        """返回可用于界面实时渲染的结构化快照。"""
         status_map = {
             "pending": "pending",
             "in_progress": "active",
@@ -103,16 +104,18 @@ class TodoManager:
 
 
 class TodoWriteTool(ResultTool):
-    """Update task list."""
+    """更新任务列表。"""
 
     name = "TodoWrite"
     description = "Update task list."
 
     def __init__(self, todo_manager: TodoManager):
+        """绑定工具要操作的待办列表管理器。"""
         self.todo_manager = todo_manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明待办条目的内容、状态及活跃任务描述等输入字段。"""
         return {
             "type": "object",
             "properties": {
@@ -136,7 +139,7 @@ class TodoWriteTool(ResultTool):
         }
 
     async def execute_result(self, items: list[dict]) -> ToolOutcome:
-        """Update the todo list."""
+        """更新待办事项列表。"""
         try:
             return ToolOutcome(self.todo_manager.update(items), "success")
         except Exception as e:

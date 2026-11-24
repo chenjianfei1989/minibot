@@ -1,4 +1,4 @@
-"""Skill tool for loading domain knowledge."""
+"""用于加载领域知识的 Skill 工具。"""
 
 from typing import Any, TYPE_CHECKING
 
@@ -10,15 +10,17 @@ if TYPE_CHECKING:
 
 
 class SkillTool(ResultTool):
-    """Load a skill to gain specialized knowledge for a task."""
+    """加载技能，获取执行任务所需的专门知识。"""
 
     name = "Skill"
 
     def __init__(self, skill_loader: "SkillLoader"):
+        """绑定用于查找和读取技能的加载器。"""
         self.skill_loader = skill_loader
 
     @property
     def description(self) -> str:
+        """根据当前可用技能生成提供给模型的工具描述。"""
         skills_desc = self.skill_loader.get_descriptions()
         return f"""Load a skill to gain specialized knowledge for a task.
 
@@ -34,6 +36,7 @@ detailed instructions and access to resources."""
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明要加载的技能名参数。"""
         return {
             "type": "object",
             "properties": {
@@ -46,7 +49,7 @@ detailed instructions and access to resources."""
         }
 
     async def execute_result(self, skill: str) -> ToolOutcome:
-        """Load a skill and inject it into the conversation."""
+        """加载技能并将其内容注入对话。"""
         content = self.skill_loader.get_skill_content(skill)
 
         if content is None:

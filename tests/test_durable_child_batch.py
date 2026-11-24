@@ -1,4 +1,4 @@
-"""Exercise concurrent children, verified delivery, and restart from a real process crash."""
+"""验证子运行并发、交付结果校验和真实进程崩溃后的恢复。"""
 
 import asyncio
 import hashlib

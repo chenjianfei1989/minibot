@@ -1,4 +1,4 @@
-"""Filesystem and command operations bound to one execution workspace."""
+"""限定在同一个执行工作区内的文件系统与命令操作。"""
 
 import asyncio
 from dataclasses import dataclass
@@ -24,39 +24,54 @@ _LIST_CAPTURE_BYTES = 2 * 1024 * 1024
 
 @dataclass(frozen=True)
 class WorkspacePath:
-    """Canonical workspace-relative name and, in trusted local mode, its resolved host path."""
+    """工作区内规范化的相对名称，以及可信本地模式下解析出的宿主机路径。"""
 
     relative: str
     host_path: Path | None = None
 
 
 class WorkspaceBackend(Protocol):
-    """An execution workspace; cancelling an async operation propagates to its supervisor."""
+    """执行工作区。取消异步操作时，取消信号会传递给其管理器。"""
 
     @property
-    def identity(self) -> WorkspaceIdentity: ...
+    def identity(self) -> WorkspaceIdentity:
+        """提供后端的工作区标识。"""
+        ...
 
-    def target(self, path: str) -> WorkspacePath: ...
+    def target(self, path: str) -> WorkspacePath:
+        """解析工作区路径，返回可用于执行或授权的目标。"""
+        ...
 
     async def run(
         self, command: str, *, timeout: float, output_limit: int | None = None,
-    ) -> ExecutionResult: ...
+    ) -> ExecutionResult:
+        """在工作区执行命令，并遵守超时及输出限制。"""
+        ...
 
-    async def read_file(self, path: str, *, limit: int | None, max_bytes: int | None) -> str: ...
+    async def read_file(self, path: str, *, limit: int | None, max_bytes: int | None) -> str:
+        """读取工作区文件，按需限制返回行数和采集字节数。"""
+        ...
 
-    async def write_file(self, target: WorkspacePath, content: str) -> None: ...
+    async def write_file(self, target: WorkspacePath, content: str) -> None:
+        """将文本写入已解析的工作区文件。"""
+        ...
 
-    async def edit_file(self, target: WorkspacePath, old_text: str, new_text: str) -> bool: ...
+    async def edit_file(self, target: WorkspacePath, old_text: str, new_text: str) -> bool:
+        """替换目标文件中的指定文本，返回是否完成替换。"""
+        ...
 
-    async def list_dir(self, path: str) -> list[str]: ...
+    async def list_dir(self, path: str) -> list[str]:
+        """列出工作区内指定目录的直属条目。"""
+        ...
 
 
 class LocalBackend:
-    """Run trusted Python file operations and the configured legacy Bash policy."""
+    """执行受信任的 Python 文件操作，并遵循已配置的旧版 Bash 策略。"""
 
     def __init__(
         self, workdir: Path, *, bash: BashConfig | None = None, checkpoints: GitFileCheckpoints | None = None,
     ) -> None:
+        """设置本地工作区根目录、Bash 执行器和可选文件检查点。"""
         self.workdir = workdir.resolve()
         self.checkpoints = checkpoints
         policy = bash or BashConfig()
@@ -64,21 +79,26 @@ class LocalBackend:
         self._command = DockerCommand(self.workdir, policy) if policy.backend == "docker" else LocalCommand(self.workdir)
 
     def _path(self, path: str) -> Path:
+        """将给定路径解析到本地工作区范围内。"""
         return safe_path(self.workdir, path)
 
     def target(self, path: str) -> WorkspacePath:
+        """构造带规范化相对路径和宿主机路径的文件目标。"""
         resolved = self._path(path)
         return WorkspacePath(resolved.relative_to(self.workdir).as_posix(), resolved)
 
     async def run(
         self, command: str, *, timeout: float, output_limit: int | None = None,
     ) -> ExecutionResult:
+        """执行本地后端命令，向底层执行器传递时间和输出限制。"""
         return await self._command.run(command, timeout=timeout, output_limit=output_limit)
 
     async def read_file(self, path: str, *, limit: int | None, max_bytes: int | None) -> str:
+        """读取本地 UTF-8 文件，可限制行数和字节数。"""
         file_path = self._path(path)
 
         def read() -> str:
+            """在后台执行读取逻辑，按配置选择普通或有界读取。"""
             if max_bytes is None:
                 lines = file_path.read_text(encoding="utf-8").splitlines()
                 return "\n".join(lines[:limit] if limit else lines)
@@ -88,6 +108,7 @@ class LocalBackend:
         return await asyncio.to_thread(read)
 
     async def write_file(self, target: WorkspacePath, content: str) -> None:
+        """写入本地文件，在启用检查点时通过检查点存储提交。"""
         file_path = target.host_path
         assert file_path is not None
         if self.checkpoints is not None:
@@ -95,18 +116,21 @@ class LocalBackend:
             return
 
         def write() -> None:
+            """创建必要的父目录并写入 UTF-8 文本。"""
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content, encoding="utf-8")
 
         await asyncio.to_thread(write)
 
     async def edit_file(self, target: WorkspacePath, old_text: str, new_text: str) -> bool:
+        """编辑本地文件，在启用检查点时通过检查点存储提交。"""
         file_path = target.host_path
         assert file_path is not None
         if self.checkpoints is not None:
             return await finish_file_operation(lambda: self.checkpoints.edit(file_path, old_text, new_text))
 
         def edit() -> bool:
+            """读取原文并执行替换，找不到原文本时返回 False。"""
             content = file_path.read_text(encoding="utf-8")
             if old_text not in content:
                 return False
@@ -116,9 +140,11 @@ class LocalBackend:
         return await asyncio.to_thread(edit)
 
     async def list_dir(self, path: str) -> list[str]:
+        """列出本地工作区内目录的直属条目。"""
         file_path = self._path(path)
 
         def list_names() -> list[str]:
+            """在后台扫描目录并生成条目列表。"""
             with os.scandir(file_path) as entries:
                 return bounded_listing(entries)
 
@@ -126,35 +152,42 @@ class LocalBackend:
 
 
 class DockerBackend:
-    """Run each operation in a fresh container with the same read-write bind mount."""
+    """每次操作使用新容器，并使用同一个可读写绑定挂载。"""
 
     def __init__(self, config: Config, *, lease: DockerLease | None = None) -> None:
+        """初始化 Docker 命令后端、超时和受限工作区配置。"""
         self.timeout = config.workspace.timeout or config.tools.timeout
         self._command = DockerCommand(config.workdir.resolve(), config.workspace, lease)
         self.identity = configured_workspace_identity(config)
         self.validate_root()
 
     def validate_root(self) -> None:
+        """绑定或验证 Docker 挂载对应的工作区根目录。"""
         self._command.bind_root()
 
     async def reconcile(self) -> None:
+        """核实并清理此前执行遗留的容器。"""
         await self._command.reconcile()
 
     def cleanup_pending(self) -> bool:
+        """检查当前 Docker 命令的租约是否仍有待清理容器。"""
         lease = self._command.lease
         return lease is not None and lease.pending() is not None
 
     def target(self, path: str) -> WorkspacePath:
+        """将路径解析成容器工作区内的相对目标。"""
         return WorkspacePath("/".join(restricted_parts(path)) or ".")
 
     async def run(
         self, command: str, *, timeout: float, output_limit: int | None = None,
     ) -> ExecutionResult:
+        """在 Docker 工作区运行命令，传递时间和输出限制。"""
         return await self._command.run(command, timeout=timeout, output_limit=output_limit)
 
     async def _file_call(
         self, operation: Literal["read", "write", "edit", "list"], path: str, output_limit: int, **arguments: Any,
     ) -> str:
+        """通过容器内的文件操作助手执行文件请求并检查结果。"""
         target = self.target(path)
         if operation != "list" and target.relative == ".":
             raise ValueError("Path must name a file.")
@@ -174,19 +207,23 @@ class DockerBackend:
         return result.stdout
 
     async def read_file(self, path: str, *, limit: int | None, max_bytes: int | None) -> str:
+        """在 Docker 工作区使用给定的行数和字节上限读取文件。"""
         capture = max_bytes if max_bytes is not None else _DEFAULT_CAPTURE_BYTES
         text = await self._file_call("read", path, capture, limit=limit, max_bytes=capture)
         return "\n".join(text.splitlines()) if max_bytes is None else text
 
     async def write_file(self, target: WorkspacePath, content: str) -> None:
+        """在写入大小限制内将文本写入 Docker 工作区。"""
         if len(content.encode("utf-8")) > MAX_MUTATION_BYTES:
             raise ValueError("File content exceeds the 16 MiB mutation limit.")
         await self._file_call("write", target.relative, 4096, content=content)
 
     async def edit_file(self, target: WorkspacePath, old_text: str, new_text: str) -> bool:
+        """在大小限制内编辑 Docker 工作区的文件，返回是否替换成功。"""
         if any(len(text.encode("utf-8")) > MAX_MUTATION_BYTES for text in (old_text, new_text)):
             raise ValueError("File content exceeds the 16 MiB mutation limit.")
         return (await self._file_call("edit", target.relative, 4096, old_text=old_text, new_text=new_text)) == "true"
 
     async def list_dir(self, path: str) -> list[str]:
+        """通过容器内的助手读取并解析目录条目列表。"""
         return json.loads(await self._file_call("list", path, _LIST_CAPTURE_BYTES))

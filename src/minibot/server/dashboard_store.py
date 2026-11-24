@@ -1,4 +1,4 @@
-"""Persistence for global WebUI dashboard state."""
+"""全局 WebUI 控制台状态的持久化。"""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ class ModelRecord:
 
 
 class DashboardStore:
-    """JSON-backed persistence for provider/model registry."""
+    """以 JSON 持久化服务商和模型注册表。"""
 
     def __init__(self, *, app_home: Path) -> None:
         self.app_home = app_home.resolve()

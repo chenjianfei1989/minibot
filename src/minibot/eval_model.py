@@ -1,4 +1,4 @@
-"""Run fixed file tasks through MiniBot against an explicitly selected provider."""
+"""通过 MiniBot 使用显式选择的模型服务商执行固定文件任务。"""
 
 import argparse
 import asyncio
@@ -126,7 +126,7 @@ def make_bot(directory: Path, workspace: Path, model: str, api_key: str) -> Mini
         session=SessionConfig(enabled=False),
         runtime_budget=BUDGET,
     )
-    # The loader normally reads external skill descriptions before the SDK constructs its prompt.
+    # SDK 组装提示词之前，加载器通常会先读取外部技能描述。
     with patch.object(SkillLoader, "COMMON_SKILL_DIRS", ()):
         bot = Minibot(
             config=config, allow_subagent_delegation=False, allow_team_tools=False,

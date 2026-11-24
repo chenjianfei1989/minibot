@@ -1,4 +1,4 @@
-"""Tool system for Minibot."""
+"""MiniBot 工具系统。"""
 
 from .base import BaseTool
 from .registry import ToolRegistry

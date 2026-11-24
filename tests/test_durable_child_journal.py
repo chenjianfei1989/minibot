@@ -1,4 +1,4 @@
-"""Verify durable child identity, recovery, and ownership against SQLite."""
+"""用 SQLite 验证持久化子运行的身份、恢复和所有权。"""
 
 from pathlib import Path
 import sqlite3

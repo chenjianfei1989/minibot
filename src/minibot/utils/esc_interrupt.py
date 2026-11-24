@@ -1,4 +1,4 @@
-"""ESC key interrupt monitor for interactive sessions."""
+"""监控交互会话中的 Esc 键中断。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from contextlib import contextmanager, suppress
 
 
 class EscInterruptMonitor:
-    """Monitor stdin for ESC and push interrupt signals into an async queue."""
+    """监听标准输入中的 Esc 键，并将中断信号放入异步队列。"""
 
     def __init__(self) -> None:
         self._queue: asyncio.Queue[None] = asyncio.Queue(maxsize=1)
@@ -75,7 +75,7 @@ class EscInterruptMonitor:
 
     @contextmanager
     def suspend(self):
-        """Give another interactive prompt exclusive ownership of terminal input."""
+        """将终端输入的独占权交给另一处交互提示。"""
         if not self._enabled:
             yield
             return

@@ -1,4 +1,4 @@
-"""Tests for /session command handler."""
+"""测试 /session 命令处理器。"""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch

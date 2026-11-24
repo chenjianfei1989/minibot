@@ -1,4 +1,4 @@
-"""Tests for CLI ask-user interaction helpers."""
+"""测试 CLI 中与用户问答交互的辅助函数。"""
 
 from unittest.mock import AsyncMock, patch
 

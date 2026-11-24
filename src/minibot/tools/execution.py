@@ -1,4 +1,4 @@
-"""Shared tool dispatch with text-compatible hooks."""
+"""共享的工具分发逻辑，兼容接收文本结果的钩子。"""
 
 import asyncio
 from collections.abc import Awaitable, Callable
@@ -22,6 +22,7 @@ async def execute_with_hooks(
     wait_for_approval: Callable[[Callable[[], Awaitable[ApprovedCall | None]]], Awaitable[ApprovedCall | None]] | None = None,
     invoke: Callable[[dict[str, Any]], Awaitable[ToolOutcome]] | None = None,
 ) -> ToolOutcome:
+    """按权限决策和前后钩子执行工具，统一处理结果与诊断。"""
     permissions = current_permissions.get()
     call = None
     tool = registry.get(name)
@@ -29,6 +30,7 @@ async def execute_with_hooks(
         if tool is None:
             return ToolOutcome(f"Unknown tool: {name}", "unknown_tool")
         async def authorize() -> ApprovedCall | None:
+            """委托当前运行权限判断是否允许该次工具调用。"""
             return await permissions.authorize(name, args, tool, actor)
 
         choice = permissions.policy.rules.get(name, permissions.policy.default)

@@ -1,4 +1,4 @@
-"""Inspect real JSONL records without a model service or a trace exporter."""
+"""在没有模型服务或追踪导出器的情况下检查实际生成的 JSONL 记录。"""
 
 import asyncio
 import json

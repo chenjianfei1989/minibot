@@ -1,4 +1,4 @@
-"""Bounded model retrieval for artifacts from the current session."""
+"""供模型在范围限制内检索当前会话的产物。"""
 
 import asyncio
 import json
@@ -14,10 +14,12 @@ _ARTIFACT_ID = {"type": "string", "description": "Opaque ID returned in an artif
 
 class _ArtifactTool(ResultTool):
     def __init__(self, output_chars: int):
+        """记录工具输出允许使用的字符数。"""
         self.output_chars = output_chars
 
     @property
     def limit(self) -> int:
+        """结合当前产物作用域，计算工具可返回的字符上限。"""
         scope = current_artifacts.get()
         return min(MAX_READ_CHARS, scope.output_chars if scope is not None else self.output_chars)
 
@@ -28,6 +30,7 @@ class ReadArtifactTool(_ArtifactTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """描述读取产物所需的 ID、起始偏移和读取长度。"""
         return {
             "type": "object",
             "properties": {
@@ -40,6 +43,7 @@ class ReadArtifactTool(_ArtifactTool):
         }
 
     async def execute_result(self, artifact_id: str, offset: int = 0, limit: int | None = None) -> ToolOutcome:
+        """从当前运行可访问的产物中读取指定文本片段，并报告读取状态。"""
         scope = current_artifacts.get()
         if scope is None:
             return ToolOutcome("No active artifact session.", "refused")
@@ -66,6 +70,7 @@ class SearchArtifactTool(_ArtifactTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """描述搜索产物所需的 ID 和查询字符串。"""
         return {
             "type": "object",
             "properties": {
@@ -77,6 +82,7 @@ class SearchArtifactTool(_ArtifactTool):
         }
 
     async def execute_result(self, artifact_id: str, query: str) -> ToolOutcome:
+        """在当前运行可访问的产物中查找匹配文本，并返回受限的匹配结果。"""
         scope = current_artifacts.get()
         if scope is None:
             return ToolOutcome("No active artifact session.", "refused")

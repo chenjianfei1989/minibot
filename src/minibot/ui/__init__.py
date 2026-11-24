@@ -1,1 +1,1 @@
-"""User interface utilities for interactive CLI."""
+"""交互式 CLI 的界面辅助工具。"""

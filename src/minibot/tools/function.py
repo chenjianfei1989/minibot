@@ -1,4 +1,4 @@
-"""Function-backed tools for SDK integrations."""
+"""供 SDK 集成使用的 Python 函数工具。"""
 
 from __future__ import annotations
 
@@ -11,11 +11,12 @@ from .base import BaseTool
 
 
 def _is_optional(annotation: Any) -> tuple[bool, Any]:
+    """判断类型注解是否允许 None，并返回其非空类型信息。"""
     origin = get_origin(annotation)
     if origin is None:
         return False, annotation
 
-    # Optional[T] is Union[T, None]
+    # Optional[T] 等价于 Union[T, None]。
     if origin is Literal or origin is list or origin is dict:
         return False, annotation
 
@@ -28,6 +29,7 @@ def _is_optional(annotation: Any) -> tuple[bool, Any]:
 
 
 def _schema_from_type(annotation: Any) -> dict[str, Any]:
+    """将受支持的 Python 类型注解转换成 JSON Schema。"""
     origin = get_origin(annotation)
 
     if origin is None:
@@ -67,7 +69,7 @@ def _schema_from_type(annotation: Any) -> dict[str, Any]:
         value_ann = args[1] if len(args) == 2 else Any
         return {"type": "object", "additionalProperties": _schema_from_type(value_ann)}
 
-    # Optional[T] support (Union[T, None]).
+    # 支持 Optional[T]，即 Union[T, None]。
     is_opt, inner = _is_optional(annotation)
     if is_opt:
         return {"anyOf": [_schema_from_type(inner), {"type": "null"}]}
@@ -76,6 +78,7 @@ def _schema_from_type(annotation: Any) -> dict[str, Any]:
 
 
 def schema_from_callable(func: Callable[..., Any]) -> dict[str, Any]:
+    """从函数签名和类型提示生成模型可读取的参数 Schema。"""
     sig = inspect.signature(func)
     hints = get_type_hints(func)
 
@@ -115,7 +118,7 @@ def schema_from_callable(func: Callable[..., Any]) -> dict[str, Any]:
 
 
 class FunctionTool(BaseTool):
-    """Wrap a Python callable into a Minibot BaseTool."""
+    """将 Python 可调用对象包装为 MiniBot 的 BaseTool。"""
 
     def __init__(
         self,
@@ -125,6 +128,7 @@ class FunctionTool(BaseTool):
         description: str | None = None,
         input_schema: dict[str, Any] | None = None,
     ) -> None:
+        """包装 Python 可调用对象，确定名称、描述、Schema 与调用方式。"""
         if not callable(func):
             raise TypeError("func must be callable")
         self._func = func
@@ -135,12 +139,15 @@ class FunctionTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """返回初始化时生成或显式传入的参数 Schema。"""
         return self._input_schema
 
     def validate_arguments(self, args: dict[str, Any]) -> None:
+        """用被包装函数的签名校验传入的命名参数。"""
         inspect.signature(self._func).bind(**args)
 
     async def execute(self, **kwargs) -> str:
+        """根据函数是否异步执行，并将返回值转换为工具文本。"""
         if self._is_async:
             result = await self._func(**kwargs)
         else:

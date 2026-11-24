@@ -1,4 +1,4 @@
-"""Single-file checkpoints backed by an application-owned Git object store."""
+"""使用应用管理的 Git 对象库保存单文件检查点。"""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ _T = TypeVar("_T")
 
 
 class FileCheckpointError(RuntimeError):
-    """A file checkpoint operation could not be completed safely."""
+    """无法安全完成文件检查点操作。"""
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class FileCheckpoint:
 
     @property
     def rolled_back(self) -> bool:
+        """判断检查点是否已经回滚。"""
         return self.status == "rolled_back"
 
 
@@ -58,7 +59,7 @@ class _Record:
 
 
 async def finish_file_operation(operation: Callable[[], _T]) -> _T:
-    """Finish a started filesystem transaction before propagating cancellation."""
+    """先完成已开始的文件系统事务，再传播取消信号。"""
     task = asyncio.create_task(asyncio.to_thread(operation))
     try:
         return await asyncio.shield(task)
@@ -76,9 +77,10 @@ async def finish_file_operation(operation: Callable[[], _T]) -> _T:
 
 
 class GitFileCheckpoints:
-    """Record changes and restore only the exact post-state of one checkpoint."""
+    """记录文件变更，并仅在目标完全匹配检查点的变更后状态时允许恢复。"""
 
     def __init__(self, workdir: Path, app_home: Path) -> None:
+        """记录工作区与检查点私有存储路径。"""
         self.workdir = workdir.resolve()
         key = hashlib.sha256(os.fsencode(self.workdir)).hexdigest()
         self.storage = app_home.resolve() / "file-checkpoints"
@@ -89,6 +91,7 @@ class GitFileCheckpoints:
     def _run_git(
         args: list[str], *, cwd: Path, data: bytes | None = None, accepted: tuple[int, ...] = (0,),
     ) -> bytes:
+        """在受控环境中运行 Git 命令，返回标准输出。"""
         env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
         env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_OPTIONAL_LOCKS="0")
         try:
@@ -107,15 +110,18 @@ class GitFileCheckpoints:
         return result.stdout
 
     def _git(self, *args: str, data: bytes | None = None) -> bytes:
+        """在检查点的私有 Git 仓库中运行指定命令。"""
         return self._run_git(["--git-dir", str(self.repository), *args], cwd=self.storage, data=data)
 
     def _validate_storage(self) -> None:
+        """验证检查点目录、仓库和锁文件的存储路径。"""
         if self.storage.is_symlink() or self.repository.is_symlink() or self.lock_path.is_symlink():
             raise FileCheckpointError("Checkpoint storage cannot be a symbolic link.")
         if self.storage.resolve() != self.storage:
             raise FileCheckpointError("Checkpoint storage changed location.")
 
     def _require_worktree(self) -> None:
+        """确认工作目录位于有效的 Git 工作树中。"""
         try:
             result = self._run_git(["rev-parse", "--is-inside-work-tree"], cwd=self.workdir)
         except FileCheckpointError as exc:
@@ -125,6 +131,7 @@ class GitFileCheckpoints:
 
     @contextmanager
     def _locked(self) -> Iterator[None]:
+        """在作用域内持有检查点存储的进程锁。"""
         self._validate_storage()
         self.storage.mkdir(parents=True, mode=0o700, exist_ok=True)
         fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
@@ -140,6 +147,7 @@ class GitFileCheckpoints:
             os.close(fd)
 
     def _initialize(self) -> None:
+        """按需初始化检查点使用的私有 Git 仓库。"""
         if not self.repository.exists():
             with TemporaryDirectory(dir=self.storage, prefix=".init-") as directory:
                 scratch = Path(directory)
@@ -147,6 +155,7 @@ class GitFileCheckpoints:
                 scratch.replace(self.repository)
 
     def _target(self, path: Path) -> Path:
+        """验证目标路径是否符合文件检查点的范围和类型要求。"""
         if (
             not path.is_relative_to(self.workdir)
             or path == self.workdir
@@ -158,6 +167,7 @@ class GitFileCheckpoints:
         return path
 
     def _read_target(self, target: Path) -> _FileState | None:
+        """读取目标文件及其权限，文件缺失时返回空状态。"""
         self._target(target)
         try:
             info = target.lstat()
@@ -179,10 +189,13 @@ class GitFileCheckpoints:
             return _FileState(data, stat.S_IMODE(opened.st_mode))
 
     def write(self, target: Path, content: str) -> None:
+        """写入指定文件并记录相应的文件检查点。"""
         self._change(target, lambda _: content)
 
     def edit(self, target: Path, old_text: str, new_text: str) -> bool:
+        """通过替换指定文本编辑文件并记录检查点。"""
         def transform(before: _FileState | None) -> str | None:
+            """计算替换后的内容，目标缺失或原文本无匹配时拒绝编辑。"""
             if before is None:
                 raise FileNotFoundError(f"File does not exist: {target}")
             with io.TextIOWrapper(io.BytesIO(before.data), encoding="utf-8") as stream:
@@ -194,6 +207,7 @@ class GitFileCheckpoints:
         return self._change(target, transform)
 
     def _change(self, target: Path, transform: Callable[[_FileState | None], str | None]) -> bool:
+        """在锁内捕获修改前后状态并提交文件更新。"""
         self._require_worktree()
         with self._locked():
             before = self._read_target(target)
@@ -228,6 +242,7 @@ class GitFileCheckpoints:
 
     @staticmethod
     def _stage(staged: Path, data: bytes, mode: int | None) -> int:
+        """创建用于原子替换的暂存文件，并设置目标权限。"""
         with staged.open("xb") as stream:
             stream.write(data)
             if mode is not None:
@@ -237,13 +252,16 @@ class GitFileCheckpoints:
             return stat.S_IMODE(os.fstat(stream.fileno()).st_mode)
 
     def _expect(self, target: Path, expected: _FileState | None) -> None:
+        """确认文件状态仍与预期一致，防止覆盖并发修改。"""
         if self._read_target(target) != expected:
             raise FileCheckpointError("Checkpoint conflict: the target no longer matches the expected state.")
 
     def _blob(self, data: bytes) -> str:
+        """把字节写入私有 Git 对象库，返回对象标识。"""
         return self._git("hash-object", "-w", "--stdin", data=data).decode("ascii").strip()
 
     def _save(self, checkpoint_id: str, target: Path, before: _FileState | None, after: _FileState) -> None:
+        """保存检查点的元数据和文件对象引用。"""
         metadata = {
             "path": target.relative_to(self.workdir).as_posix(),
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -259,10 +277,12 @@ class GitFileCheckpoints:
 
     @staticmethod
     def _validate_id(checkpoint_id: str) -> None:
+        """校验检查点 ID 是否为规定长度的十六进制字符串。"""
         if not re.fullmatch(r"[0-9a-f]{32}", checkpoint_id):
             raise FileCheckpointError("Invalid file checkpoint ID.")
 
     def _record(self, checkpoint_id: str, rolled_back: set[str], rollback_started: set[str]) -> _Record:
+        """根据 Git 引用读取指定检查点记录及其元数据。"""
         ref = f"{_CHECKPOINTS}/{checkpoint_id}"
         metadata = json.loads(self._git("cat-file", "blob", f"{ref}:metadata").decode("utf-8"))
         status: Literal["recorded", "rolled_back", "rollback_incomplete"] = "recorded"
@@ -277,10 +297,12 @@ class GitFileCheckpoints:
         return _Record(checkpoint, metadata["before_mode"], metadata["after_mode"])
 
     def _ids(self, namespace: str) -> set[str]:
+        """从指定引用命名空间列出检查点 ID。"""
         raw = self._git("for-each-ref", "--format=%(refname:lstrip=3)", namespace).decode("ascii")
         return {line for line in raw.splitlines() if re.fullmatch(r"[0-9a-f]{32}", line)}
 
     def list(self) -> list[FileCheckpoint]:
+        """读取并列出当前工作区的文件检查点。"""
         self._validate_storage()
         if not self.repository.is_dir():
             return []
@@ -294,12 +316,14 @@ class GitFileCheckpoints:
             return sorted(records, key=lambda checkpoint: (checkpoint.created_at, checkpoint.id), reverse=True)
 
     def _lookup(self, checkpoint_id: str) -> _Record:
+        """校验 ID 并查找已有检查点，找不到时抛出错误。"""
         self._validate_id(checkpoint_id)
         if not self.repository.is_dir() or checkpoint_id not in self._ids(_CHECKPOINTS):
             raise FileCheckpointError(f"Unknown file checkpoint: {checkpoint_id}")
         return self._record(checkpoint_id, self._ids(_ROLLED_BACK), self._ids(_ROLLBACK_STARTED))
 
     def _states(self, record: _Record) -> tuple[_FileState | None, _FileState]:
+        """从私有仓库加载检查点对应的修改前后状态。"""
         ref = f"{_CHECKPOINTS}/{record.checkpoint.id}"
         before = None
         if record.before_mode is not None:
@@ -308,6 +332,7 @@ class GitFileCheckpoints:
         return before, after
 
     def diff(self, checkpoint_id: str) -> str:
+        """生成指定检查点的文件差异。"""
         self._validate_storage()
         if not self.repository.is_dir():
             raise FileCheckpointError("No file checkpoints have been recorded.")
@@ -329,7 +354,7 @@ class GitFileCheckpoints:
         return f"{action} {record.checkpoint.path}\n" + patch.decode("utf-8", errors="replace")
 
     def rollback(self, checkpoint_id: str) -> bool:
-        """Consume a checkpoint and restore its prior state when the target matches."""
+        """目标匹配时，使用检查点恢复其原状态并标记已使用。"""
         self._validate_storage()
         if not self.repository.is_dir():
             raise FileCheckpointError("No file checkpoints have been recorded.")
@@ -353,11 +378,12 @@ class GitFileCheckpoints:
             return True
 
     def _restore(self, record: _Record, target: Path, after: _FileState, staged: Path | None) -> None:
+        """恢复匹配检查点的目标文件，并更新回滚记录。"""
         checkpoint_id = record.checkpoint.id
         started = f"{_ROLLBACK_STARTED}/{checkpoint_id}"
         completed = f"{_ROLLED_BACK}/{checkpoint_id}"
         tree = self._git("rev-parse", f"{_CHECKPOINTS}/{checkpoint_id}").decode("ascii").strip()
-        # An interruption across the filesystem update must not allow a replay.
+        # 文件系统更新期间发生中断时，禁止重放此次操作。
         self._git("update-ref", started, tree)
         try:
             self._expect(target, after)

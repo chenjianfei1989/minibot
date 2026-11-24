@@ -1,4 +1,4 @@
-"""File operation tools."""
+"""文件操作工具。"""
 
 import json
 from pathlib import Path
@@ -17,13 +17,16 @@ class WorkspaceFileTool(ResultTool):
     def __init__(
         self, workdir: Path, *, checkpoints: GitFileCheckpoints | None = None, backend: WorkspaceBackend | None = None,
     ):
+        """初始化文件工具使用的工作目录和后端。"""
         self.workdir = workdir
         self.backend = backend if backend is not None else LocalBackend(workdir, checkpoints=checkpoints)
 
     def permission_target(self, path: str) -> WorkspacePath:
+        """为权限检查取得后端解析后的操作目标。"""
         return self.backend.target(path)
 
     async def _file_lock_conflict(self, path: str, target: WorkspacePath) -> ToolOutcome | None:
+        """检查目标文件是否与团队成员持有的锁冲突。"""
         team_ctx = get_team_execution_context()
         if team_ctx is None or team_ctx.role != "teammate" or team_ctx.runtime is None or not team_ctx.member_id:
             return None
@@ -36,13 +39,14 @@ class WorkspaceFileTool(ResultTool):
 
 
 class ReadFileTool(WorkspaceFileTool):
-    """Read file contents."""
+    """读取文件内容。"""
 
     name = "read_file"
     description = "Read file contents."
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明要读取的文件路径及可选的行数限制。"""
         return {
             "type": "object",
             "properties": {
@@ -59,7 +63,7 @@ class ReadFileTool(WorkspaceFileTool):
         }
 
     async def execute_result(self, path: str, limit: int | None = None) -> ToolOutcome:
-        """Read a file."""
+        """读取一个文件。"""
         scope = current_artifacts.get()
         try:
             text = await self.backend.read_file(path, limit=limit, max_bytes=scope.capture_bytes if scope else None)
@@ -78,13 +82,14 @@ class ReadFileTool(WorkspaceFileTool):
 
 
 class WriteFileTool(WorkspaceFileTool):
-    """Write content to file."""
+    """将内容写入文件。"""
 
     name = "write_file"
     description = "Write to file."
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明写入所需的目标路径与文本内容。"""
         return {
             "type": "object",
             "properties": {
@@ -101,7 +106,7 @@ class WriteFileTool(WorkspaceFileTool):
         }
 
     async def execute_result(self, path: str, content: str) -> ToolOutcome:
-        """Write content to a file."""
+        """将内容写入一个文件。"""
         try:
             target = self.backend.target(path)
             conflict = await self._file_lock_conflict(path, target)
@@ -116,13 +121,14 @@ class WriteFileTool(WorkspaceFileTool):
 
 
 class EditFileTool(WorkspaceFileTool):
-    """Replace text in file."""
+    """替换文件中的文本。"""
 
     name = "edit_file"
     description = "Replace text in file."
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明编辑所需的路径、原文本与替换文本。"""
         return {
             "type": "object",
             "properties": {
@@ -143,7 +149,7 @@ class EditFileTool(WorkspaceFileTool):
         }
 
     async def execute_result(self, path: str, old_text: str, new_text: str) -> ToolOutcome:
-        """Replace text in a file."""
+        """替换一个文件中的文本。"""
         try:
             target = self.backend.target(path)
             conflict = await self._file_lock_conflict(path, target)
@@ -159,13 +165,14 @@ class EditFileTool(WorkspaceFileTool):
 
 
 class ListDirTool(WorkspaceFileTool):
-    """List immediate workspace directory entries."""
+    """列出指定工作区目录的直接条目。"""
 
     name = "list_dir"
     description = "List the names in a directory. Use '.' for the workspace root."
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """声明列举目录所需的工作区路径。"""
         return {
             "type": "object",
             "properties": {"path": {"type": "string", "description": "Path to the directory to list"}},
@@ -173,6 +180,7 @@ class ListDirTool(WorkspaceFileTool):
         }
 
     async def execute_result(self, path: str) -> ToolOutcome:
+        """调用工作区后端列出目录条目，并将结果转换成工具输出。"""
         try:
             names = await self.backend.list_dir(path)
             return ToolOutcome(json.dumps(names, ensure_ascii=True), "success")

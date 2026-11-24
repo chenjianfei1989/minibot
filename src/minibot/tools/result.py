@@ -1,4 +1,4 @@
-"""Internal tool outcomes, independent of provider message formats."""
+"""独立于服务商消息格式的内部工具执行结果。"""
 
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -8,7 +8,7 @@ ToolStatus = Literal["success", "refused", "timeout", "error", "unknown_tool", "
 
 @dataclass(frozen=True)
 class ToolOutcome:
-    """Model text and explicit execution status, with separate hook diagnostics."""
+    """提供给模型的文本和明确的执行状态。钩子诊断信息单独记录。"""
 
     text: str
     status: ToolStatus = "success"
@@ -20,9 +20,11 @@ class ToolOutcome:
 
     @property
     def is_error(self) -> bool:
+        """根据工具状态和钩子错误判断该结果是否应标记为错误。"""
         return self.status != "success" or self.hook_error is not None
 
     def metadata(self) -> dict[str, Any]:
+        """生成工具结果的结构化状态和可用诊断字段。"""
         data: dict[str, Any] = {"tool_status": self.status, "is_error": self.is_error}
         if self.exit_code is not None:
             data["tool_exit_code"] = self.exit_code

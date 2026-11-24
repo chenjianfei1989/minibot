@@ -1,4 +1,4 @@
-"""Output formatting utilities."""
+"""输出格式化辅助工具。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .terminal import PanelStyle, clear_screen as clear_screen_fallback, panel, 
 
 
 def print_assistant(content: str, *, title: str = "Assistant") -> None:
-    """Print assistant content in a readable block."""
+    """以便于阅读的文本块显示助手内容。"""
     content = content.rstrip()
     if not content:
         return
@@ -36,7 +36,7 @@ def print_assistant(content: str, *, title: str = "Assistant") -> None:
 
 
 def print_system(message: str) -> None:
-    """Print system/status messages."""
+    """显示系统消息或状态消息。"""
     if rich_enabled():
         console = get_console()
         console.print(f"[bright_black]{message}[/]")
@@ -45,7 +45,7 @@ def print_system(message: str) -> None:
 
 
 def print_tool_call(line: str) -> None:
-    """Print a tool-call header line."""
+    """显示工具调用标题行。"""
     if rich_enabled():
         console = get_console()
         console.print(f"[bold bright_cyan]{line}[/]")
@@ -54,7 +54,7 @@ def print_tool_call(line: str) -> None:
 
 
 _STREAM_LINE_OPEN = False
-_STREAM_MODE = "idle"  # idle | plain | rich
+_STREAM_MODE = "idle"  # 状态为 idle、plain 或 rich。
 _STREAM_TITLE = "Assistant"
 _STREAM_BUFFER: list[str] = []
 _STREAM_LIVE = None
@@ -65,7 +65,7 @@ def _stream_panel(title: str, content: str):
     from rich.panel import Panel
     from rich.text import Text
 
-    # Keep one stable panel and only refresh its body while streaming.
+    # 流式输出时保留同一个面板，只刷新其正文。
     try:
         renderable = Markdown(content or " ")
     except Exception:
@@ -79,7 +79,7 @@ def _stream_panel(title: str, content: str):
 
 
 def stream_assistant_start(*, title: str = "Assistant") -> None:
-    """Start streaming assistant output."""
+    """开始流式显示助手输出。"""
     global _STREAM_LINE_OPEN, _STREAM_MODE, _STREAM_TITLE, _STREAM_BUFFER, _STREAM_LIVE
     if _STREAM_LINE_OPEN:
         return
@@ -109,7 +109,7 @@ def stream_assistant_start(*, title: str = "Assistant") -> None:
 
 
 def stream_assistant_write(chunk: str) -> None:
-    """Write one streaming chunk to stdout."""
+    """向标准输出写入一个流式分片。"""
     if not chunk:
         return
     global _STREAM_BUFFER
@@ -124,7 +124,7 @@ def stream_assistant_write(chunk: str) -> None:
 
 
 def stream_assistant_end() -> None:
-    """End streaming assistant output."""
+    """结束助手的流式输出。"""
     global _STREAM_LINE_OPEN, _STREAM_MODE, _STREAM_BUFFER, _STREAM_LIVE
     if not _STREAM_LINE_OPEN:
         return
@@ -187,18 +187,15 @@ def _render_prompt_markup(prompt: str) -> str:
 
 
 def prompt_input(prompt: str) -> str:
-    """
-    Read input from user.
+    """读取用户输入。
 
-    Always uses builtin `input()` to preserve line editing behavior.
+    始终使用内置的 `input()`，以保留行编辑行为。
     """
     return input(prompt)
 
 
 def prompt_input_markup(prompt: str) -> str:
-    """
-    Read input from user with Rich markup in the prompt.
-    """
+    """显示带 Rich 标记的提示并读取用户输入。"""
     if not rich_enabled():
         try:
             from rich.text import Text
@@ -229,7 +226,7 @@ def print_panel(title: str, body: str) -> None:
 
 @contextmanager
 def status(message: str, *, spinner: str = "dots") -> Iterator[None]:
-    """A transient spinner/status line while doing blocking work."""
+    """执行阻塞操作时显示的临时动画或状态行。"""
     if not rich_enabled():
         yield
         return
@@ -245,7 +242,7 @@ def _truncate(text: str, max_chars: int) -> tuple[str, bool]:
 
 
 def print_tool_output(name: str, output: str, max_preview: int = 800) -> None:
-    """Print formatted tool output."""
+    """显示格式化后的工具输出。"""
     if name in {"Task"}:
         return
     if not (output or "").strip():

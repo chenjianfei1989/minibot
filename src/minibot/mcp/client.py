@@ -1,4 +1,4 @@
-"""MCP client implementation."""
+"""MCP 客户端实现。"""
 
 from contextlib import suppress
 from pathlib import Path
@@ -11,9 +11,10 @@ from .transport import MCPTransport, StdioTransport, SSETransport
 
 
 class MCPClient:
-    """Client for a single MCP server."""
+    """连接单个 MCP 服务的客户端。"""
 
     def __init__(self, config: MCPServerConfig, workdir: Path | None = None):
+        """保存单个服务的连接配置并初始化传输和资源状态。"""
         self.config = config
         self.name = config.name
         self.workdir = workdir
@@ -25,10 +26,11 @@ class MCPClient:
 
     @property
     def is_connected(self) -> bool:
+        """判断底层传输是否已连接到 MCP 服务。"""
         return self._server_info is not None and self._transport is not None and self._transport.is_connected
 
     async def connect(self) -> None:
-        """Connect to the MCP server."""
+        """连接 MCP 服务。"""
         if self.is_connected:
             return
         await self.disconnect()
@@ -57,7 +59,7 @@ class MCPClient:
             raise
 
     async def disconnect(self) -> None:
-        """Disconnect from the MCP server."""
+        """断开与 MCP 服务的连接。"""
         transport, self._transport = self._transport, None
         self._server_info = None
         self._tools.clear()
@@ -66,7 +68,7 @@ class MCPClient:
             await transport.disconnect()
 
     async def _initialize(self, protocol_version: str) -> None:
-        """Initialize the MCP session."""
+        """初始化 MCP 会话。"""
         result = await self._transport.send({
             "method": "initialize",
             "params": {
@@ -79,7 +81,7 @@ class MCPClient:
             },
         })
 
-        # Parse server info
+        # 解析服务端信息。
         server_info = result.get("serverInfo", {})
         capabilities = result.get("capabilities", {})
 
@@ -93,23 +95,23 @@ class MCPClient:
             ),
         )
 
-        # Send initialized notification
+        # 发送初始化完成通知。
         await self._transport.notify({
             "method": "notifications/initialized",
         })
 
-        # Load tools if available
+        # 服务端支持时加载工具。
         if info.capabilities.tools:
             await self._load_tools()
 
-        # Load resources if available
+        # 服务端支持时加载资源。
         if info.capabilities.resources:
             await self._load_resources()
 
         self._server_info = info
 
     async def _load_tools(self) -> None:
-        """Load available tools from the server."""
+        """从服务端加载可用工具。"""
         result = await self._transport.send({
             "method": "tools/list",
         })
@@ -124,7 +126,7 @@ class MCPClient:
             ))
 
     async def _load_resources(self) -> None:
-        """Load available resources from the server."""
+        """从服务端加载可用资源。"""
         result = await self._transport.send({
             "method": "resources/list",
         })
@@ -140,11 +142,11 @@ class MCPClient:
             ))
 
     def get_tools(self) -> list[MCPTool]:
-        """Get all available tools."""
+        """获取全部可用工具。"""
         return self._tools
 
     def get_resources(self) -> list[MCPResource]:
-        """Get all available resources."""
+        """获取全部可用资源。"""
         return self._resources
 
     async def call_tool(
@@ -152,7 +154,7 @@ class MCPClient:
         name: str,
         arguments: dict[str, Any],
     ) -> MCPToolResult:
-        """Call a tool on the server."""
+        """调用服务端的一个工具。"""
         if not self.is_connected:
             return MCPToolResult(
                 content=f"Error: Not connected to server {self.name}",
@@ -168,10 +170,10 @@ class MCPClient:
                 },
             })
 
-            # Extract content from result
+            # 从结果中提取内容。
             content_list = result.get("content", [])
             if content_list:
-                # Combine all text content
+                # 合并所有文本内容。
                 text_parts = []
                 for content in content_list:
                     if content.get("type") == "text":
@@ -192,7 +194,7 @@ class MCPClient:
             )
 
     async def read_resource(self, uri: str) -> str:
-        """Read a resource from the server."""
+        """从服务端读取一项资源。"""
         if not self.is_connected:
             return f"Error: Not connected to server {self.name}"
 

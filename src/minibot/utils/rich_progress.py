@@ -1,4 +1,4 @@
-"""Rich-based progress renderables (optional dependency)."""
+"""基于可选依赖 Rich 的进度显示组件。"""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ class SubagentStatus:
     _last_update: float = field(default_factory=time.time, init=False, repr=False)
 
     def tick(self) -> None:
-        # Rich Live may re-render in a background thread; keep mutations tiny and atomic.
+        # Rich Live 可能在后台线程重新渲染，修改应尽量小并保持原子性。
         self._last_update = time.time()
 
     def __rich__(self):  # type: ignore[override]

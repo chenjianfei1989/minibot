@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared GitHub and Minibot path helpers for skill install scripts."""
+"""为技能安装脚本提供通用 GitHub 和 MiniBot 路径辅助函数。"""
 
 from __future__ import annotations
 

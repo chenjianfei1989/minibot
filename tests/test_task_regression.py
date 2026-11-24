@@ -1,4 +1,4 @@
-"""Run fixed tasks through MiniBot with a scripted model and real effects."""
+"""通过 MiniBot 使用脚本化模型执行固定任务，并产生实际副作用。"""
 
 import asyncio
 import json

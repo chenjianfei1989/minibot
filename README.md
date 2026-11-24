@@ -9,14 +9,14 @@
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![PyPI](https://img.shields.io/pypi/v/minibotclaw?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/minibotclaw/)
 [![CI](https://img.shields.io/github/actions/workflow/status/zyren123/minibot/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/zyren123/minibot/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Architecture](https://img.shields.io/badge/Architecture-Event--Driven-blueviolet?style=flat-square)](https://github.com/zyren123/minibot)
+[![许可证](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![架构](https://img.shields.io/badge/Architecture-Event--Driven-blueviolet?style=flat-square)](https://github.com/zyren123/minibot)
 
 > **先跑起来，再看懂它。** MiniBot 提供 REPL、WebUI、Python SDK、MCP、Skills、Hooks、Memory 和 Team 协作能力，适合想快速搭建本地 Agent，又希望源码透明、容易改造的开发者。
 
 **[ 你可以用它 ]** &nbsp; `本地 REPL` • `WebUI` • `Python SDK` • `MCP/Skills` • `多代理协作`
 
-[中文](README.md) | [English](docs/README.en.md)
+[项目说明](README.md) · [原英文版的中文译文](docs/原英文项目说明.md) · [原西班牙语版的中文译文](README.es-ES.md)
 
 </div>
 </div>
@@ -24,8 +24,8 @@
 ---
 
 <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px;">
-  <img style="height: 400px; width: auto;" alt="Claude Code Minibot" src="https://github.com/user-attachments/assets/c4c1cc8e-9c9a-44e0-ab15-2981fa921cea" />
-  <img style="height: 400px; width: auto;" alt="Paraglider Minibot" src="https://github.com/user-attachments/assets/7e221968-293b-4324-9a52-9e6ce26c4be9" />
+  <img style="height: 400px; width: auto;" alt="Claude Code 风格的 MiniBot" src="https://github.com/user-attachments/assets/c4c1cc8e-9c9a-44e0-ab15-2981fa921cea" />
+  <img style="height: 400px; width: auto;" alt="滑翔伞 Agent 的 MiniBot 界面" src="https://github.com/user-attachments/assets/7e221968-293b-4324-9a52-9e6ce26c4be9" />
 </div>
 <p align="center" style="margin-top: 15px; font-size: 1.2em; font-weight: bold; color: #555;">
   从命令行到 WebUI，再到 SDK 集成，MiniBot 提供一条连续的本地 Agent 开发路径。
@@ -40,7 +40,7 @@
 - 在 Python 里直接 `from minibot import Minibot`，把 Agent 嵌入自己的脚本或应用。
 - 通过 MCP、Skills、Hooks、Memory 与 Team 工具扩展能力，而不是被大框架锁住。
 
-## 🎯 为什么不是另一个 Agent Demo？
+## 🎯 为什么不是另一个 Agent 演示？
 
 - **先有完整入口，再讲原理**：终端、WebUI、SDK 都能直接跑，不是只给一段伪代码。
 - **源码透明**：不依赖 LangChain、AutoGen 或 LangGraph，方便学习和二次改造。
@@ -91,12 +91,12 @@ MODEL_ID=gpt-4o-mini
 
 在当今的 AI 开发中，我们被各种框架包裹（LangChain, AutoGen 等），导致很多开发者或感兴趣的朋友并不清楚 Agent **到底是如何工作**的。
 
-MiniBot 的目标是 **"De-mystify Agents"（揭秘 Agent）**。通过阅读本项目源码，你将理解：
+MiniBot 的目标是 **揭秘 Agent**。通过阅读本项目源码，你将理解：
 
 1.  **ReAct 循环的本质**：如何用原生 Python `while` 循环和 OpenAI API 构建思考-行动链。
 2.  **工具调用的底层逻辑**：如何通过 Python `inspect` 模块将函数自动转换为 JSON Schema。
-3.  **MCP (Model Context Protocol)**：如何在不依赖官方 SDK 的情况下实现 Client 端协议握手。
-4.  **Skills 上下文管理**：如何动态地从文件系统加载 Prompts 和知识库。
+3.  **MCP（模型上下文协议）**：如何在不依赖官方 SDK 的情况下实现 客户端协议握手。
+4.  **Skills 上下文管理**：如何动态地从文件系统加载提示词 和知识库。
 
 ---
 
@@ -104,31 +104,31 @@ MiniBot 的目标是 **"De-mystify Agents"（揭秘 Agent）**。通过阅读本
 
 MiniBot 采用极其精简的模块化设计，没有任何复杂的类继承链。
 
-### 1. 🔍 Agent Core (无框架 ReAct)
+### 1. 🔍 Agent 核心（无框架 ReAct）
 摒弃复杂的 Chain/Graph 抽象，回归本质。
 - **实现**：`src/minibot/agent.py`
 - **逻辑**：维护一个纯粹的 `List[Message]` 消息队列，通过递归或循环处理 LLM 的 `tool_calls` 响应。
 
-### 2. 🛠️ Native Tool System (原生工具链)
+### 2. 🛠️ 原生工具系统
 不使用 Pydantic 生成 Schema，而是直接解析 Python 函数签名。
 - **实现**：`src/minibot/tools/`
-- Bash 支持可选 Docker 隔离，默认仍在本地执行。参见 [Bash isolation](docs/bash-isolation.md)。
-- 可选 JSONL 执行记录支持运行关联、工具状态和耗时，默认关闭。参见 [Execution traces](docs/run-traces.md)。
-- **特性**：支持 `Bash` 执行、文件 IO，以及动态注册机制。支持 **元工具 (Meta-Tools)**，即“创造工具的工具”。
+- Bash 支持可选 Docker 隔离，默认仍在本地执行。参见 [Bash 隔离](docs/Bash隔离.md)。
+- 可选 JSONL 执行记录支持运行关联、工具状态和耗时，默认关闭。参见 [执行追踪](docs/执行追踪.md)。
+- **特性**：支持 `Bash` 执行、文件 IO，以及动态注册机制。支持 **元工具**，即“创造工具的工具”。
 
-### 3. 🔗 MCP Integration (模型上下文协议)
+### 3. 🔗 MCP 集成
 完全兼容 Claude 的 MCP 协议，连接万物。
 - **实现**：`src/minibot/mcp/`
-- **亮点**：实现了基于 `stdio`、`sse` 和 `streamable_http` 的传输层，自动将 MCP 资源适配为 Agent 可调用的 Tools。
+- **亮点**：实现了基于 `stdio`、`sse` 和 `streamable_http` 的传输层，自动将 MCP 资源适配为 Agent 可调用的工具。
 
-### 4. 🎣 Hooks & Lifecycle (生命周期钩子)
+### 4. 🎣 生命周期钩子
 基于简单的观察者模式实现的安全与监控层。
 - **实现**：`src/minibot/hooks/`
 - **用途**：在 `pre_tool_call` 拦截高危命令，在 `post_agent_loop` 记录审计日志。
 
-### 5. 📚 Skill Loader (动态技能)
+### 5. 📚 技能加载器
 - **实现**：`src/minibot/skills/`
-- **逻辑**：类似于 Claude 的 Project，自动读取 Markdown 文件并注入 System Prompt。
+- **逻辑**：类似于 Claude 的 Project，自动读取 Markdown 文件并注入系统提示词。
 
 ---
 
@@ -172,7 +172,7 @@ cd ..
 
 ### 配置
 
-首次启动时，MiniBot 会自动在全局 app home 下生成 `.env`，默认位置是 `~/.minibot/.env`。
+首次启动时，MiniBot 会自动在全局应用主目录 下生成 `.env`，默认位置是 `~/.minibot/.env`。
 
 你可以通过 WebUI 的 `Config` 页面或 CLI 的 `/model config` 来完成配置；如果你更喜欢手动编辑，最少需要这些字段：
 
@@ -215,10 +215,10 @@ uv run minibot-web
 开发模式（前后端分离）：
 
 ```bash
-# Terminal A
+# 终端 A
 uv run minibot-web --reload
 
-# Terminal B
+# 终端 B
 cd webui
 npm install
 npm run dev
@@ -264,7 +264,7 @@ async def main():
 asyncio.run(main())
 ```
 
-注册自定义工具（直接传 Python function）：
+注册自定义工具（直接传 Python 函数）：
 
 ```python
 from minibot import Minibot
@@ -277,7 +277,9 @@ agent = Minibot(tools=[echo])
 
 ---
 
-## 💻 源码导读 (Where to Learn)
+## 💻 源码导读
+
+[打开 24 讲源码阅读手册](docs/源码阅读手册/00-阅读总纲.md)
 
 这是一份学习指南，告诉你代码的每一部分展示了什么概念：
 
@@ -293,7 +295,7 @@ src/minibot/
 │   ├── client.py        # [进阶] 手写 MCP 协议客户端，理解 JSON-RPC 2.0
 │   └── transport.py     # 进程间通信 (Stdio/SSE) 的实现
 ├── skills/
-│   └── loader.py        # 如何解析文件系统并动态构建 Prompt 上下文
+│   └── loader.py        # 如何解析文件系统并动态构建提示词上下文
 └── hooks/
     └── executor.py      # 中间件模式的实现，用于安全拦截
 ```
@@ -304,7 +306,7 @@ src/minibot/
 
 MiniBot 提供了一个基于 `prompt_toolkit` 和 `Rich` 的现代化终端界面。 没错，readme就是用minibot写的
 
-<img width="1310" height="1176" alt="image" src="https://github.com/user-attachments/assets/cbe0ad45-8ec9-40c5-b32c-8c8a0b9634ef" />
+<img width="1310" height="1176" alt="MiniBot 终端交互示例" src="https://github.com/user-attachments/assets/cbe0ad45-8ec9-40c5-b32c-8c8a0b9634ef" />
 
 
 ---
@@ -322,13 +324,13 @@ class WeatherTool(BaseTool):
     name = "get_weather"
     description = "获取城市天气"
 
-    # 类型注解会自动转换为 Tool Schema
+    # 类型注解会自动转换为 工具 Schema
     async def execute(self, city: str, unit: str = "celsius") -> str:
         # 这里写原生 Python 逻辑
         return f"{city} 的天气是 25度 ({unit})"
 ```
 
-### 2. 接入 MCP Server
+### 2. 接入 MCP 服务
 
 在 `config/mcp_servers.yaml` 中配置，无需改代码即可扩展能力（例如连接 GitHub, Postgres 等）：
 
@@ -343,31 +345,31 @@ servers:
 
 ---
 
-## 👥 Agent Teams (MVP)
+## 👥 Agent 团队（MVP）
 
-MiniBot 现已支持 **in-process Agent Teams**（会话内团队编排）：
+MiniBot 现已支持 **进程内 Agent 团队**（会话内团队编排）：
 
-- Lead 可通过工具自主决定是否创建团队、创建多少成员（默认 3，最大 6）
-- Teammate 拥有完整工作能力（读写文件、bash、MCP、memory 等），但**不能再创建成员**（禁用 `Task`/`TeamCreate`/`TeamShutdown`）
+- 负责人可通过工具自主决定是否创建团队、创建多少成员（默认 3，最大 6）
+- 队友拥有完整工作能力（读写文件、bash、MCP、memory 等），但**不能再创建成员**（禁用 `Task`/`TeamCreate`/`TeamShutdown`）
 - 任意成员可点对点通信（`TeamMessage`）或全队广播（`TeamBroadcast`）
 - 提供轻量共享任务板（`TeamTask`：create/list/assign/claim/complete）
-- 提供 `TeamWait` 用于 Lead 等待并汇总队友事件
+- 提供 `TeamWait` 用于负责人等待并汇总队友事件
 
-### 可用 Team 工具
+### 可用团队工具
 
 - `TeamCreate`
 - `TeamMembers`
 - `TeamTask`
 - `TeamMessage`
 - `TeamBroadcast`
-- `TeamWait` (lead only)
-- `TeamShutdown` (lead only)
+- `TeamWait`（仅负责人）
+- `TeamShutdown`（仅负责人）
 
 ### 当前限制
 
 - 仅支持 **单会话内** 团队，不支持跨重启恢复
-- 不支持 tmux/iTerm2 分屏模式（MVP 仅 in-process）
-- 不支持嵌套团队（teammate 不可再派生代理）
+- 不支持 tmux/iTerm2 分屏模式（MVP 仅在进程内运行）
+- 不支持嵌套团队（队友不可再派生代理）
 
 ### 相关配置
 
@@ -382,42 +384,42 @@ teams:
   debug_teammate_output: false
 ```
 
-开启后 teammate 不会向终端输出 Thinking/Running 状态行与常规内容，避免并发输出污染主终端。
-主 Agent（solo/lead）默认开启流式正文输出；若网关不支持流式，会自动回退为非流式输出。
+开启后队友 不会向终端输出 Thinking/Running 状态行与常规内容，避免并发输出污染主终端。
+主 Agent（独立运行或担任负责人）默认开启流式正文输出；若网关不支持流式，会自动回退为非流式输出。
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ 路线图
 
 - [x] **长期记忆**。持久化保存上下文记忆。
-- [x] **Agent Teams (MVP)**。会话内并发协作，支持消息、任务板和锁。
+- [x] **Agent 团队（MVP）**。会话内并发协作，支持消息、任务板和锁。
 - [x] **WebUI 和 FastAPI**。通过 `minibot-web` 启动 WebUI 和 API。
-- [x] **Bash 的 Docker 隔离**。可为内置 Bash 工具启用 Docker。[配置说明](docs/bash-isolation.md)
-- [x] **Subagent 工具允许列表**。执行内置子代理的工具调用前校验权限。`explore` 和 `plan` 默认仅可使用 `read_file`，可显式启用 Bash。
-- [x] **运行预算**。主 Agent 与通过 `Task` 启动的子代理共享同一执行段的预算。[预算说明](docs/runtime-budget.md)
-- [x] **执行追踪和离线任务回归**。JSONL 追踪与可重复的任务检查。[追踪和回归说明](docs/run-traces.md)
-- [x] **模型任务评估**。可选择接入真实模型提供方，重复运行固定任务。[运行评估](docs/model-evals.md)
-- [x] **统一工具权限和审批**。支持单次人工确认和限定路径的 AI 代审。[审批配置](docs/tool-approvals.md)
-- [x] **内置 `Task` 父子追踪**。在同一个 JSONL 文件中关联父调用、子代理的模型调用、工具结果和终止状态。[追踪说明](docs/run-traces.md#follow-a-task-subagent)
-- [x] **Docker 工作区**。Bash 和文件工具共用受限工作区，持久运行与大型输出均关联同一工作区。[配置 Docker 工作区](docs/workspace-backends.md)
+- [x] **Bash 的 Docker 隔离**。可为内置 Bash 工具启用 Docker。[配置说明](docs/Bash隔离.md)
+- [x] **子 Agent 工具允许列表**。执行内置子代理的工具调用前校验权限。`explore` 和 `plan` 默认仅可使用 `read_file`，可显式启用 Bash。
+- [x] **运行预算**。主 Agent 与通过 `Task` 启动的子代理共享同一执行段的预算。[预算说明](docs/运行预算.md)
+- [x] **执行追踪和离线任务回归**。JSONL 追踪与可重复的任务检查。[追踪和回归说明](docs/执行追踪.md)
+- [x] **模型任务评估**。可选择接入真实模型提供方，重复运行固定任务。[运行评估](docs/模型文件任务评估.md)
+- [x] **统一工具权限和审批**。支持单次人工确认和限定路径的 AI 代审。[审批配置](docs/工具权限与审批.md)
+- [x] **内置 `Task` 父子追踪**。在同一个 JSONL 文件中关联父调用、子代理的模型调用、工具结果和终止状态。[追踪说明](docs/执行追踪.md#follow-a-task-subagent)
+- [x] **Docker 工作区**。Bash 和文件工具共用受限工作区，持久运行与大型输出均关联同一工作区。[配置 Docker 工作区](docs/工作区后端.md)
 - [ ] **Team、自定义处理器和附加 Bot 的调用链追踪**。
-- [x] **请求前的上下文检查和工具输出上限**。按模型窗口保留近期对话，限制发给模型的工具输出。[上下文说明](docs/model-context.md)
-- [x] **大型工具输出卸载**。保存完整文本，支持同一会话内按范围读取及关键词搜索。[配置和使用](docs/context-offloading.md)
-- [x] **MCP Streamable HTTP 传输**。支持采用 2025 协议版本的远程端点。[配置说明](docs/mcp-streamable-http.md)
-- [x] **[文件检查点和回滚](docs/file-checkpoints.md)**。
-- [x] **单 Agent 持久执行**。可选择启用运行日志，在进程重启后继续任务，并人工核对结果未知的工具调用。[配置和使用](docs/durable-execution.md)
-- [ ] **Vision**。原生支持多模态图像理解。
+- [x] **请求前的上下文检查和工具输出上限**。按模型窗口保留近期对话，限制发给模型的工具输出。[上下文说明](docs/模型请求上下文限制.md)
+- [x] **大型工具输出卸载**。保存完整文本，支持同一会话内按范围读取及关键词搜索。[配置和使用](docs/上下文卸载.md)
+- [x] **MCP Streamable HTTP 传输**。支持采用 2025 协议版本的远程端点。[配置说明](docs/MCP可流式HTTP传输.md)
+- [x] **[文件检查点和回滚](docs/文件检查点.md)**。
+- [x] **单 Agent 持久执行**。可选择启用运行日志，在进程重启后继续任务，并人工核对结果未知的工具调用。[配置和使用](docs/持久化执行.md)
+- [ ] **视觉能力**。原生支持多模态图像理解。
 
 ---
 
 ## 🤝 贡献与协议
 
-本项目采用 [MIT License](LICENSE)。
+本项目采用 [MIT 许可证](LICENSE)（[中文译文](docs/MIT许可证中文译文.md)）。
 
 欢迎提交 PR！如果你想学习 Agent 原理，最好的方式就是尝试修改 `src/minibot/agent.py` 中的主循环逻辑。
 
 ---
 
 <div align="center">
-Made with ❤️ by Engineers, for Engineers.
+由工程师用心打造，供工程师使用。
 </div>

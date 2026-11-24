@@ -141,7 +141,7 @@ def test_load_config_continues_when_global_bootstrap_is_not_writable(tmp_path, m
 
     monkeypatch.setattr(Path, "mkdir", _readonly_mkdir)
 
-    # Note: Because app_home/config is read-only and missing, _load_yaml will return {}
+    # app_home/config 不可写且不存在，因此 _load_yaml 会返回 {}。
     config = load_config(
         workdir=project_root,
         app_home=app_home,

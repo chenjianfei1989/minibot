@@ -1,4 +1,4 @@
-"""Meta tools (Task, Skill)."""
+"""元工具，包括 Task 和 Skill。"""
 
 from .task import TaskTool
 from .skill import SkillTool

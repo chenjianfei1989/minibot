@@ -1,4 +1,4 @@
-"""Bot persistence for Minibot server (WebUI)."""
+"""MiniBot WebUI 服务端的 Bot 持久化。"""
 
 from __future__ import annotations
 
@@ -42,11 +42,11 @@ class BotMeta:
 
 
 class BotStore:
-    """File-based bot store.
+    """基于文件的 Bot 存储。
 
-    Layout:
-      - Default bot home: <app_home>/
-      - Custom bots root: <app_home>/bots/<bot_id>/
+    目录结构如下。
+      - 默认 Bot 主目录：<app_home>/
+      - 自定义 Bot 根目录：<app_home>/bots/<bot_id>/
         - bot.json
         - soul.md
         - sessions/
@@ -107,7 +107,7 @@ class BotStore:
         if not home.exists():
             return False
 
-        # Safety: only allow deletion inside bots_root.
+        # 删除范围仅限 bots_root 内部。
         if not home.is_relative_to(self.bots_root):
             raise ValueError("Refusing to delete bot outside bots root")
 

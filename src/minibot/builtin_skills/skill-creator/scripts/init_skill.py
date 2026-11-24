@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize a new Minibot skill directory from a template."""
+"""根据模板初始化新的 MiniBot 技能目录。"""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ EXAMPLE_ASSET = """This placeholder represents an output asset or template file.
 
 
 def _import_load_config():
-    """Reuse whichever package namespace is already loaded to avoid double-importing Minibot."""
+    """复用已加载的包命名空间，避免重复导入 MiniBot。"""
     module_names: list[str] = []
     if "minibot.config" in sys.modules or "minibot" in sys.modules:
         module_names.append("minibot.config")
@@ -80,7 +80,7 @@ def _import_load_config():
 
 
 def normalize_skill_name(skill_name: str) -> str:
-    """Normalize a skill name to lowercase hyphen-case."""
+    """将技能名称规范化为用连字符分隔的小写形式。"""
     normalized = skill_name.strip().lower()
     normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
     normalized = normalized.strip("-")
@@ -89,7 +89,7 @@ def normalize_skill_name(skill_name: str) -> str:
 
 
 def title_case_skill_name(skill_name: str) -> str:
-    """Convert hyphenated skill name to Title Case for display."""
+    """将连字符分隔的技能名转换为首字母大写的显示名称。"""
     return " ".join(word.capitalize() for word in skill_name.split("-"))
 
 
@@ -140,7 +140,7 @@ def init_skill(
     resources: list[str],
     include_examples: bool,
 ) -> Path:
-    """Initialize a new skill directory with a starter layout."""
+    """初始化新的技能目录及其基础结构。"""
     skill_dir = Path(path).resolve() / skill_name
     if skill_dir.exists():
         raise FileExistsError(f"Skill directory already exists: {skill_dir}")

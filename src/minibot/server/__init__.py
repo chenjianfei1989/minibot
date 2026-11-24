@@ -1,2 +1,2 @@
-"""Web server integration for Minibot."""
+"""MiniBot Web 服务集成。"""
 

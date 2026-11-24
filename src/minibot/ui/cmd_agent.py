@@ -1,4 +1,4 @@
-"""/agent command handler."""
+"""/agent 命令处理器。"""
 
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ async def handle_agent_cmd(
     config_path: Path,
     prompt_fn: PromptFn,
 ) -> None:
-    """Dispatch /agent subcommands.
+    """分发 /agent 子命令。
 
-    *prompt_fn(label_rich, label_plain)* → user input string.
+    *prompt_fn(label_rich, label_plain)* 返回用户输入的字符串。
     """
     parts = raw_args.strip().split(maxsplit=1)
     sub = parts[0].lower() if parts else ""

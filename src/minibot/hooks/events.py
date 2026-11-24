@@ -1,4 +1,4 @@
-"""Hook event definitions."""
+"""钩子事件定义。"""
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -6,31 +6,31 @@ from typing import Any
 
 
 class HookEvent(Enum):
-    """Events that can trigger hooks."""
+    """可以触发钩子的事件。"""
 
-    # Tool lifecycle
+    # 工具生命周期。
     PRE_TOOL_CALL = "pre_tool_call"
     POST_TOOL_CALL = "post_tool_call"
 
-    # Agent turn lifecycle
+    # Agent 对话轮次生命周期。
     PRE_AGENT_TURN = "pre_agent_turn"
     POST_AGENT_TURN = "post_agent_turn"
 
-    # Session lifecycle
+    # 会话生命周期。
     SESSION_START = "session_start"
     SESSION_END = "session_end"
 
-    # Skill loading
+    # 技能加载。
     SKILL_LOAD = "skill_load"
 
-    # Team lifecycle
+    # 团队生命周期。
     TEAMMATE_IDLE = "teammate_idle"
     TASK_COMPLETED = "task_completed"
 
 
 @dataclass
 class HookContext:
-    """Base context for hook execution."""
+    """钩子执行的基础上下文。"""
 
     event: HookEvent
     workdir: str
@@ -39,7 +39,7 @@ class HookContext:
 
 @dataclass
 class ToolCallContext(HookContext):
-    """Context for tool call hooks."""
+    """工具调用钩子的上下文。"""
 
     tool_name: str = ""
     tool_args: dict[str, Any] = field(default_factory=dict)
@@ -50,7 +50,7 @@ class ToolCallContext(HookContext):
 
 @dataclass
 class SessionContext(HookContext):
-    """Context for session hooks."""
+    """会话钩子的上下文。"""
 
     session_id: str = ""
     user_message: str | None = None
@@ -58,7 +58,7 @@ class SessionContext(HookContext):
 
 @dataclass
 class SkillLoadContext(HookContext):
-    """Context for skill loading hooks."""
+    """技能加载钩子的上下文。"""
 
     skill_name: str = ""
     skill_content: str | None = None
@@ -66,7 +66,7 @@ class SkillLoadContext(HookContext):
 
 @dataclass
 class TeamEventContext(HookContext):
-    """Context for team-related hooks."""
+    """团队相关钩子的上下文。"""
 
     team_member_id: str | None = None
     task_id: str | None = None
@@ -75,7 +75,7 @@ class TeamEventContext(HookContext):
 
 @dataclass
 class HookResult:
-    """Result of hook execution."""
+    """钩子执行的结果。"""
 
     success: bool
     output: str | None = None

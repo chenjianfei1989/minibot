@@ -1,4 +1,4 @@
-"""Helpers for parsing model tool-call arguments."""
+"""用于解析模型工具调用参数的辅助函数。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 
 def _strip_fenced_json(text: str) -> str:
-    """Unwrap ```json fenced blocks if present."""
+    """如果存在 JSON 围栏代码块，去掉外层围栏。"""
     candidate = text.strip()
     if not (candidate.startswith("```") and candidate.endswith("```")):
         return candidate
@@ -21,11 +21,11 @@ def _strip_fenced_json(text: str) -> str:
 
 
 def parse_tool_arguments(raw: str | None) -> tuple[dict[str, Any] | None, str | None]:
-    """Parse tool arguments from model output.
+    """解析模型输出中的工具参数。
 
-    Returns `(parsed_dict, note)`:
-    - `parsed_dict` is `None` when unrecoverable.
-    - `note` is warning/error detail (None when clean parse).
+    返回 `(parsed_dict, note)`。
+    - 无法恢复时，`parsed_dict` 为 `None`。
+    - `note` 为警告或错误详情，正常解析时为 `None`。
     """
     if raw is None:
         return {}, None

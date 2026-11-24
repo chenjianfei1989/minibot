@@ -1,4 +1,4 @@
-"""Built-in tools for Minibot."""
+"""MiniBot 内置工具。"""
 
 from .ask_user import AskUserQuestionTool
 from .bash import BashTool

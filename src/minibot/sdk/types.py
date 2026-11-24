@@ -1,4 +1,4 @@
-"""SDK public types."""
+"""SDK 公共类型。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for SessionManager lifecycle."""
+"""测试 SessionManager 的生命周期管理。"""
 
 from pathlib import Path
 
@@ -35,7 +35,7 @@ def test_get_latest(manager: SessionManager) -> None:
     manager.append_message(s2, {"role": "user", "content": "new"})
 
     latest = manager.get_latest()
-    # latest should be one of the two (the one with most recent mtime)
+    # latest 应是两者中修改时间较新的一项。
     assert latest in {s1, s2}
 
 

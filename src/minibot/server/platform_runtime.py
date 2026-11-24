@@ -1,4 +1,4 @@
-"""Runtime integrations for external chat platforms."""
+"""外部聊天平台的运行时接入。"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _utc_now_iso() -> str:
 
 
 class FeishuPlatformRuntime:
-    """Long-lived Feishu websocket runtime."""
+    """维持飞书 WebSocket 长连接的运行时。"""
 
     def __init__(self, *, manager: "AgentManager", platform: dict[str, Any]) -> None:
         self._manager = manager

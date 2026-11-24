@@ -1,4 +1,4 @@
-"""CLI entrypoint for `minibot-web`."""
+"""`minibot-web` 的 CLI 入口。"""
 
 from __future__ import annotations
 

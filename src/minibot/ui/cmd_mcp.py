@@ -1,4 +1,4 @@
-"""/mcp command handler — interactive server toggling."""
+"""/mcp 命令处理器，用于交互式切换服务连接。"""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ async def handle_mcp_cmd(
     config_path: Path,
     tool_registry: "Any" = None,
 ) -> None:
-    """Dispatch /mcp subcommands."""
+    """分发 /mcp 子命令。"""
     sub = raw_args.strip().split()[0].lower() if raw_args.strip() else ""
 
     if sub == "list" or sub == "":
@@ -32,7 +32,7 @@ def _render_server(
     cursor: int,
     mcp_manager: MCPManager,
 ) -> str:
-    """Render a single server line for the interactive selector."""
+    """渲染交互式选择器中单个服务的显示行。"""
     connected = mcp_manager.is_connected(cfg.name)
     enabled_mark = "●" if cfg.enabled else "○"
     conn_status = " [connected]" if connected else ""
@@ -45,7 +45,7 @@ async def _interactive_list(
     config_path: Path,
     tool_registry: "Any",
 ) -> None:
-    """Show interactive arrow-key selector for MCP servers."""
+    """显示用于选择 MCP 服务的方向键交互界面。"""
     configs = mcp_manager.get_all_server_configs()
     if not configs:
         print_system("No MCP servers configured.")

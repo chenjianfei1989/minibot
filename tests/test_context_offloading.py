@@ -1,4 +1,4 @@
-"""Exercise complete artifact capture and bounded retrieval through the runtime."""
+"""通过运行时验证完整产物捕获及受限检索。"""
 
 import json
 import os

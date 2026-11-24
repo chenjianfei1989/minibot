@@ -9,6 +9,7 @@ from uuid import uuid4
 from .config import load_config
 from .agent import Agent, UserInterruptedError
 from .session.manager import SessionManager
+from .utils.cli_logging import cli_file_logging, log_cli_event, logger
 from .utils.esc_interrupt import EscInterruptMonitor
 from .utils.output import clear_screen, print_assistant, print_panel, print_system, prompt_input, prompt_input_markup
 from .utils.rich_utils import rich_enabled, get_console
@@ -152,12 +153,14 @@ async def repl(agent: Agent) -> None:
 
     # 启动会话。
     await agent.start_session()
+    logger.info("会话 %s 开始", current_session_id)
 
     # 连接 MCP 服务。
     mcp_errors = await agent.connect_mcp_servers()
     for server, error in mcp_errors.items():
         if error:
             print_system(f"Warning: MCP server '{server}' connect failed: {error}")
+            logger.warning("MCP 服务 %s 连接失败: %s", server, error)
 
     _print_banner(agent)
     pt_input: PromptToolkitInput | None = None
@@ -386,6 +389,7 @@ async def repl(agent: Agent) -> None:
                     except UserInterruptedError:
                         print_system("Interrupted (ESC).")
                     except Exception as exc:
+                        logger.exception("会话 %s 的运行命令执行失败", current_session_id)
                         print_system(str(exc))
                     continue
                 if cmd == "/session":
@@ -419,6 +423,7 @@ async def repl(agent: Agent) -> None:
                 except UserInterruptedError:
                     print_system("Interrupted (ESC).")
                 except Exception as exc:
+                    logger.exception("会话 %s 的对话执行失败", current_session_id)
                     print_system(str(exc))
                 continue
 
@@ -435,8 +440,9 @@ async def repl(agent: Agent) -> None:
             except UserInterruptedError:
                 print_system("Interrupted (ESC).")
                 history.append({"role": "assistant", "content": "[Generation interrupted by user via ESC]"})
-            except Exception as e:
-                print_system(f"Error: {e}")
+            except Exception as exc:
+                logger.exception("会话 %s 的对话执行失败", current_session_id)
+                print_system(f"Error: {exc}")
 
             # 持久化新增消息。
             if session_mgr is not None:
@@ -447,6 +453,7 @@ async def repl(agent: Agent) -> None:
     finally:
         # 结束会话。
         await agent.end_session()
+        logger.info("会话 %s 结束", current_session_id)
         print_system("Session ended.")
 
 
@@ -456,15 +463,26 @@ def main() -> None:
     app_home = resolve_app_home()
     project_root = resolve_project_root(workdir)
     config = load_config(workdir=workdir, app_home=app_home, project_root=project_root)
-    _setup_readline(app_home / "history" / "history")
-    global_teams_enabled = bool(config.teams.enabled)
-    bot_store = BotStore(app_home=app_home)
-    default_bot = bot_store.read_bot_json(DEFAULT_BOT_ID)
-    config.teams.enabled = global_teams_enabled and bool(default_bot.get("teams_enabled", True))
-    agent = Agent(config, disabled_skills=load_skills_disabled(app_home))
-    agent.team_tools_global_enabled = global_teams_enabled  # type: ignore[attr-defined]
-
-    asyncio.run(repl(agent))
+    with cli_file_logging(config) as log_path:
+        if log_path is not None:
+            print_system(f"运行日志: {log_path}")
+        logger.info("MiniBot 启动，模型 %s", config.llm.model)
+        try:
+            _setup_readline(app_home / "history" / "history")
+            global_teams_enabled = bool(config.teams.enabled)
+            bot_store = BotStore(app_home=app_home)
+            default_bot = bot_store.read_bot_json(DEFAULT_BOT_ID)
+            config.teams.enabled = global_teams_enabled and bool(default_bot.get("teams_enabled", True))
+            agent = Agent(
+                config,
+                disabled_skills=load_skills_disabled(app_home),
+                event_observer=log_cli_event if log_path is not None else None,
+            )
+            agent.team_tools_global_enabled = global_teams_enabled  # type: ignore[attr-defined]
+            asyncio.run(repl(agent))
+        except Exception:
+            logger.exception("MiniBot 终端运行失败")
+            raise
 
 
 if __name__ == "__main__":

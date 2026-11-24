@@ -194,6 +194,8 @@ minibot
 uv run minibot
 ```
 
+终端启动时会显示本次日志文件的路径。Windows 默认位于 `%USERPROFILE%\.minibot\logs`，其他系统可在 MiniBot 应用目录的 `logs/` 下找到。日志以 UTF-8 保存每条完整的助手回复、工具结果和异常堆栈。每次启动有独立的日志文件。
+
 常用命令：
 
 - `/help`

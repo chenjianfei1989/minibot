@@ -1,6 +1,7 @@
 """管理本地和 Docker 命令的启动、输出采集、超时和清理。"""
 
 import asyncio
+import codecs
 import csv
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from dataclasses import dataclass, field
@@ -82,6 +83,28 @@ async def _drain(reader: asyncio.StreamReader, limit: int) -> _DrainedOutput:
     return _DrainedOutput(bytes(output), exceeded, False)
 
 
+def _windows_output_encodings() -> tuple[str, ...]:
+    """读取 Windows 控制台输出代码页，并为本机程序保留系统编码。"""
+    from ctypes import WinDLL
+
+    page = WinDLL("kernel32").GetConsoleOutputCP()
+    return (f"cp{page}", "oem", "mbcs") if page else ("oem", "mbcs")
+
+
+def _decode_process_output(
+    data: bytes, fallback_encodings: tuple[str, ...], *, truncated: bool = False,
+) -> str:
+    """优先使用 UTF-8 解码，再尝试 Windows 本机命令的输出编码。"""
+    for encoding in ("utf-8", *fallback_encodings):
+        try:
+            decoder = codecs.getincrementaldecoder(encoding)()
+            # 达到字节上限时，最后一个多字节字符可能没有收完整。
+            return decoder.decode(data, final=not truncated)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 async def _kill_tree(proc: asyncio.subprocess.Process) -> None:
     """按操作系统结束受管的进程树。"""
     if os.name == "posix":
@@ -99,7 +122,7 @@ async def _kill_tree(proc: asyncio.subprocess.Process) -> None:
             async with asyncio.timeout(_ADMIN_TIMEOUT):
                 _, error = await killer.communicate()
             if killer.returncode and proc.returncode is None:
-                raise RuntimeError(error.decode("utf-8", "replace"))
+                raise RuntimeError(_decode_process_output(error, _windows_output_encodings()))
         except (OSError, TimeoutError, RuntimeError) as exc:
             if killer is not None and killer.returncode is None:
                 killer.kill()
@@ -126,7 +149,7 @@ async def _feed_stdin(writer: asyncio.StreamWriter, data: bytes) -> None:
 
 async def _process(
     *args: str, cwd: Path, env: dict[str, str] | None = None, output_limit: int | None = None,
-    stdin: bytes | None = None,
+    stdin: bytes | None = None, fallback_encodings: tuple[str, ...] = (),
 ) -> ExecutionResult:
     """启动受管进程，采集标准输出和错误，并在取消或超时时等待清理。"""
     per_stream_limit = _OUTPUT_LIMIT if output_limit is None else output_limit
@@ -195,8 +218,9 @@ async def _process(
         stdout.exceeded or stderr.exceeded or len(stdout.data) + len(stderr.data) > output_limit
     )
     return ExecutionResult(
-        stdout.data.decode("utf-8", "replace"), stderr.data.decode("utf-8", "replace"), proc.returncode,
-        output_exceeded=exceeded, incomplete_output=stdout.incomplete or stderr.incomplete,
+        _decode_process_output(stdout.data, fallback_encodings, truncated=stdout.exceeded or stdout.incomplete),
+        _decode_process_output(stderr.data, fallback_encodings, truncated=stderr.exceeded or stderr.incomplete),
+        proc.returncode, output_exceeded=exceeded, incomplete_output=stdout.incomplete or stderr.incomplete,
     )
 
 
@@ -213,6 +237,7 @@ class LocalCommand:
                 return await _process(
                     os.environ.get("COMSPEC", "cmd.exe"), "/c", command,
                     cwd=self.workdir, output_limit=output_limit,
+                    fallback_encodings=_windows_output_encodings(),
                 )
             return await _process("/bin/sh", "-c", command, cwd=self.workdir, output_limit=output_limit)
 

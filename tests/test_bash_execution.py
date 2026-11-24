@@ -45,8 +45,32 @@ async def test_success_nonzero_bounded_output_and_workspace(tmp_path):
 
 @pytest.mark.asyncio
 async def test_invalid_process_bytes_are_replaced(tmp_path):
-    result = await BashTool(tmp_path).execute("printf '\\377'")
-    assert result == "\ufffd"
+    result = await execution._process(
+        sys.executable, "-c", "import sys; sys.stdout.buffer.write(bytes([255]))", cwd=tmp_path,
+    )
+    assert result.stdout == "\ufffd"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("encoding", ["cp936", "utf-8"])
+async def test_process_decodes_unicode_stdout_and_stderr(tmp_path, encoding):
+    output = "命令正常完成"
+    error = "不是内部或外部命令"
+    script = (
+        f"import sys; sys.stdout.buffer.write({output.encode(encoding)!r}); "
+        f"sys.stderr.buffer.write({error.encode(encoding)!r}); sys.exit(1)"
+    )
+
+    result = await execution._process(
+        sys.executable, "-c", script, cwd=tmp_path, fallback_encodings=("cp936",),
+    )
+
+    assert (result.stdout, result.stderr, result.exit_code) == (output, error, 1)
+
+
+def test_truncated_utf8_output_keeps_complete_characters():
+    data = "中文🚀".encode("utf-8")[:-1]
+    assert execution._decode_process_output(data, ("cp936",), truncated=True) == "中文"
 
 
 @pytest.mark.asyncio

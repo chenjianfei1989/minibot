@@ -134,6 +134,7 @@ class Agent:
         session_id: str | None = None,
         extra_system_prompt: str | None = None,
         event_sink: EventSink | None = None,
+        event_observer: Callable[[StreamEvent], None] | None = None,
         skills_dir: Any = None,
         disabled_skills: Any = None,
         team_runtime: TeamRuntime | None = None,
@@ -188,6 +189,8 @@ class Agent:
         self.extra_system_prompt = (extra_system_prompt or "").strip()
         # 接收结构化事件的可选接收器，例如 SDK 的事件路由。
         self.event_sink = event_sink
+        # 旁听事件以记录终端日志，同时保留终端渲染。
+        self.event_observer = event_observer
         # 通过 ContextVar 保存当前执行上下文的追踪记录器，避免不同任务共享追踪状态。
         self._trace_context: ContextVar[RunTrace | None] = ContextVar("run_trace", default=None)
         # Agent 的实际运行角色，取值为独立运行、团队负责人或队友。
@@ -318,15 +321,20 @@ class Agent:
         return self.event_sink is None and not self.silent
 
     async def _emit(self, event: StreamEvent, *, record_trace: bool = True) -> None:
-        """配置了事件接收器时，发送一条结构化事件。"""
+        """记录追踪信息，并向已配置的观察器和接收器发送事件。"""
         trace = self._trace_context.get()
         if record_trace and trace is not None:
             trace.observe(event)
+        if self.event_observer is None and self.event_sink is None:
+            return
+        # 确保事件接收方始终可以取得 session_id。
+        event.setdefault("session_id", self.session_id)
+        if self.event_observer is not None:
+            with suppress(Exception):
+                self.event_observer(event)
         if self.event_sink is None:
             return
         try:
-            # 确保事件接收方始终可以取得 session_id。
-            event.setdefault("session_id", self.session_id)
             await self.event_sink.emit(event)
         except Exception:
             # 投递事件失败时，仍应继续运行 Agent。

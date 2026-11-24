@@ -1,6 +1,6 @@
 import type { Config } from "../lib/types";
 
-export type MemoryBackend = "sqlite" | "postgres";
+export type MemoryBackend = Config["memory_backend"];
 
 export type MemoryConfigDraft = {
   backend: MemoryBackend;
@@ -9,7 +9,9 @@ export type MemoryConfigDraft = {
 };
 
 export function memoryDraftFromConfig(config: Config): MemoryConfigDraft {
-  const backend = config.memory_backend === "postgres" ? "postgres" : "sqlite";
+  const backend = config.memory_backend === "postgres" || config.memory_backend === "mysql"
+    ? config.memory_backend
+    : "sqlite";
   const databaseUrlValue = config.memory_database_url_value ?? "";
   return {
     backend,

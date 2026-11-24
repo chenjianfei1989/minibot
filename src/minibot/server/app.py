@@ -90,7 +90,10 @@ def create_app(*, workdir: str | Path | None = None) -> FastAPI:
 
     @app.put("/api/config")
     async def put_config(update: ConfigUpdate) -> dict[str, str]:
-        await manager.update_config(update.model_dump(exclude_unset=True))
+        try:
+            await manager.update_config(update.model_dump(exclude_unset=True))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"status": "ok"}
 
     @app.get("/api/dashboard", response_model=DashboardResponse)

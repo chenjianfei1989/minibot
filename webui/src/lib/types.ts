@@ -187,7 +187,7 @@ export type Config = {
   available_skill_targets: string[];
   tool_plugins: string[];
   api_key_masked: string | null;
-  memory_backend: "sqlite" | "postgres";
+  memory_backend: "sqlite" | "postgres" | "mysql";
   memory_database_url_configured: boolean;
   memory_database_url_value: string | null;
 };

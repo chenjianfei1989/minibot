@@ -222,6 +222,9 @@ skills_dir: custom-skills
 file_checkpoints: true
 durable_execution: true
 # 保存完整的工具输出
+memory:
+  backend: mysql
+  database_url: mysql://localhost:3306/minibot_memory
 context_offloading:
   enabled: false
   threshold_chars: 234
@@ -273,6 +276,8 @@ tools:
     assert config.file_checkpoints is True
     assert config.durable_execution is True
     assert config.context_offloading.enabled is False
+    assert config.memory.backend == "mysql"
+    assert config.memory.database_url == "mysql://localhost:3306/minibot_memory"
     assert config.context_offloading.threshold_chars == 234
     assert config.context_offloading.max_artifact_bytes == 262144
     assert config.llm.model == "模型😀"

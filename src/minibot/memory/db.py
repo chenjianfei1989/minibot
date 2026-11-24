@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 
+from sqlalchemy.engine import URL, make_url
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel, Session, create_engine
 
@@ -20,7 +22,7 @@ class MemoryDatabase:
     database_path: Path | None
 
 
-_MEMORY_DB_CACHE: dict[tuple[str, str], MemoryDatabase] = {}
+_MEMORY_DB_CACHE: dict[tuple[str, str | URL], MemoryDatabase] = {}
 _MEMORY_DB_CACHE_LOCK = Lock()
 
 
@@ -41,6 +43,21 @@ def _normalize_postgres_database_url(database_url: str) -> str:
     if database_url.startswith("postgres://"):
         return database_url.replace("postgres://", "postgresql+psycopg://", 1)
     return database_url
+
+
+def normalize_mysql_database_url(database_url: str) -> URL:
+    """校验 MySQL 数据库地址，并补齐驱动及 Unicode 字符集。"""
+    if "\r" in database_url or "\n" in database_url:
+        raise ValueError("memory.database_url must be a single-line MySQL URL")
+    try:
+        url = make_url(database_url)
+    except (ArgumentError, ValueError):
+        raise ValueError("memory.database_url must be a valid MySQL URL") from None
+    if url.drivername not in {"mysql", "mysql+pymysql"} or not url.database:
+        raise ValueError("memory.database_url must use mysql:// or mysql+pymysql:// and name a database")
+    return url.set(drivername="mysql+pymysql").update_query_dict(
+        {"charset": url.query.get("charset", "utf8mb4")}
+    )
 
 
 def _clear_memory_db_cache() -> None:
@@ -73,24 +90,27 @@ def create_memory_db(config: MemoryConfig, *, app_home: Path) -> MemoryDatabase:
             )
             _MEMORY_DB_CACHE[cache_key] = database
             return database
-    elif backend == "postgres":
+    elif backend in {"postgres", "mysql"}:
         if not config.database_url:
-            raise ValueError("memory.database_url is required for postgres backend")
-        database_path = None
-        database_url = _normalize_postgres_database_url(config.database_url)
-        cache_key = ("postgres", database_url)
+            raise ValueError(f"memory.database_url is required for {backend} backend")
+        if backend == "mysql":
+            database_url = normalize_mysql_database_url(config.database_url)
+        else:
+            database_url = _normalize_postgres_database_url(config.database_url)
+        cache_key = (backend, database_url)
 
         with _MEMORY_DB_CACHE_LOCK:
             cached = _MEMORY_DB_CACHE.get(cache_key)
             if cached is not None:
                 return cached
 
-            engine = create_engine(database_url)
+            engine_options = {"pool_pre_ping": True} if backend == "mysql" else {}
+            engine = create_engine(database_url, **engine_options)
             SQLModel.metadata.create_all(engine)
             database = MemoryDatabase(
                 engine=engine,
                 session_factory=sessionmaker(bind=engine, class_=Session, expire_on_commit=False),
-                database_path=database_path,
+                database_path=None,
             )
             _MEMORY_DB_CACHE[cache_key] = database
             return database

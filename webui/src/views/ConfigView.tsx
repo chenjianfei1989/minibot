@@ -919,6 +919,7 @@ export default function ConfigView(props: {
                       >
                         <option value="sqlite">{t("config.memory.backend.sqlite")}</option>
                         <option value="postgres">{t("config.memory.backend.postgres")}</option>
+                        <option value="mysql">{t("config.memory.backend.mysql")}</option>
                       </select>
                     </div>
 
@@ -940,7 +941,7 @@ export default function ConfigView(props: {
                             );
                           }}
                           readOnly={!showMemoryDatabaseUrl}
-                          disabled={memoryDraft.backend !== "postgres"}
+                          disabled={memoryDraft.backend === "sqlite"}
                           placeholder={
                             memoryDraft.databaseUrlConfigured
                               ? t("config.memory.urlConfigured")
@@ -959,9 +960,9 @@ export default function ConfigView(props: {
                         </button>
                       </div>
                       <div className="text-xs text-zinc-500">
-                        {memoryDraft.backend === "postgres"
-                          ? t("config.memory.databaseUrl.helpPostgres")
-                          : t("config.memory.databaseUrl.helpSqlite")}
+                        {memoryDraft.backend === "sqlite"
+                          ? t("config.memory.databaseUrl.helpSqlite")
+                          : t("config.memory.databaseUrl.helpServer")}
                       </div>
                     </div>
                   </div>

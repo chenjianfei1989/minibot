@@ -1,6 +1,8 @@
 """验证记忆数据库的初始化、连接配置和会话工厂。"""
 
 import pytest
+from sqlalchemy.dialects import mysql, sqlite
+from sqlalchemy.schema import CreateIndex, CreateTable
 from sqlmodel import SQLModel
 
 from src.minibot.config.schema import MemoryConfig
@@ -83,3 +85,71 @@ def test_create_memory_db_reuses_cached_postgres_engine_for_same_url(tmp_path, m
     assert first is second
     assert created_urls == ["postgresql+psycopg://writer:secret@localhost:5432/minibot_memory"]
     assert create_all_calls == [first.engine]
+
+
+@pytest.mark.parametrize("database_url", [None, "mysql://localhost", "postgresql://localhost/memory"])
+def test_mysql_backend_requires_mysql_database_url(tmp_path, database_url):
+    config = MemoryConfig(backend="mysql", database_url=database_url)
+
+    with pytest.raises(ValueError, match=r"memory\.database_url"):
+        create_memory_db(config, app_home=tmp_path)
+
+
+def test_mysql_backend_reuses_engine_for_equivalent_urls(tmp_path, monkeypatch):
+    engine_calls = []
+    create_all_calls = []
+
+    def fake_create_engine(url, **options):
+        engine_calls.append((url, options))
+        return object()
+
+    monkeypatch.setattr(memory_db, "create_engine", fake_create_engine)
+    monkeypatch.setattr(SQLModel.metadata, "create_all", create_all_calls.append)
+    monkeypatch.setattr(memory_db, "_MEMORY_DB_CACHE", {})
+    config = MemoryConfig(
+        backend="mysql",
+        database_url="mysql://writer:test%40password@localhost:3306/memory?connect_timeout=5",
+    )
+
+    first = create_memory_db(config, app_home=tmp_path)
+    config.database_url = config.database_url.replace("mysql://", "mysql+pymysql://") + "&charset=utf8mb4"
+    second = create_memory_db(config, app_home=tmp_path)
+
+    assert first is second
+    assert first.database_path is None
+    assert create_all_calls == [first.engine]
+    [(url, options)] = engine_calls
+    assert url.drivername == "mysql+pymysql"
+    assert url.password == "test@password"
+    assert dict(url.query) == {"charset": "utf8mb4", "connect_timeout": "5"}
+    assert options == {"pool_pre_ping": True}
+
+
+def test_mysql_memory_schema_supports_long_text_and_indexes_uri_by_prefix():
+    table = SQLModel.metadata.tables["memory_nodes"]
+    uri_index = next(index for index in table.indexes if index.name == "idx_memory_nodes_namespace_uri")
+
+    mysql_ddl = str(CreateTable(table).compile(dialect=mysql.dialect()))
+    assert "content LONGTEXT" in mysql_ddl
+    assert "uri LONGTEXT" in mysql_ddl
+    assert "utf8mb4" in mysql_ddl
+    assert "(namespace_id, uri(255))" in str(CreateIndex(uri_index).compile(dialect=mysql.dialect()))
+    assert "content VARCHAR" in str(CreateTable(table).compile(dialect=sqlite.dialect()))
+
+
+@pytest.mark.parametrize(
+    ("table_name", "description"),
+    [
+        ("memory_namespaces", "记忆命名空间"),
+        ("memory_nodes", "记忆节点"),
+        ("memory_node_versions", "历史版本"),
+        ("memory_triggers", "记忆触发词"),
+        ("memory_search_documents", "检索文档"),
+    ],
+)
+def test_mysql_memory_table_ddl_includes_chinese_comment(table_name, description):
+    table = SQLModel.metadata.tables[table_name]
+
+    assert description in table.comment
+    mysql_ddl = str(CreateTable(table).compile(dialect=mysql.dialect()))
+    assert f"COMMENT='{table.comment}'" in mysql_ddl

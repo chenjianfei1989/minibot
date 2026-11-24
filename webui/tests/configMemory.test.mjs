@@ -33,6 +33,25 @@ test("memoryDraftFromConfig preserves backend and configured postgres URL", () =
   });
 });
 
+test("MySQL can be loaded and saved as a global memory backend", () => {
+  const databaseUrl = "mysql://writer:pass@host:3306/memory";
+  const draft = memoryDraftFromConfig({
+    memory_backend: "mysql",
+    memory_database_url_configured: true,
+    memory_database_url_value: databaseUrl,
+  });
+
+  assert.deepEqual(draft, {
+    backend: "mysql",
+    databaseUrlConfigured: true,
+    databaseUrlValue: databaseUrl,
+  });
+  assert.deepEqual(buildMemoryConfigUpdate(draft), {
+    memory_backend: "mysql",
+    memory_database_url_value: databaseUrl,
+  });
+});
+
 test("buildMemoryConfigUpdate trims URL and allows sqlite to keep a cleared value", () => {
   assert.deepEqual(
     buildMemoryConfigUpdate({

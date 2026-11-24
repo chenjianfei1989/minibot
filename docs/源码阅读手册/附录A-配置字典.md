@@ -46,8 +46,8 @@
 
 | 字段 | 默认值或说明 |
 | --- | --- |
-| `memory.enabled`、`memory.memory_dir`、`memory.backend` | `true`、`memory`、`sqlite`。受限工作区另有能力限制 |
-| `memory.database_url`、`memory.active_namespace` | 默认空。分别指定数据库连接地址及当前命名空间 |
+| `memory.enabled`、`memory.memory_dir`、`memory.backend` | `true`、`memory`、`sqlite`。后端可选 `sqlite`、`postgres`、`mysql`。受限工作区另有能力限制 |
+| `memory.database_url`、`memory.active_namespace` | 默认空。使用 `postgres` 或 `mysql` 时需要数据库连接地址，通常引用 `MEMORY_DATABASE_URL`。`active_namespace` 指定当前命名空间 |
 | `memory.long_term_max_lines`、`memory.daily_lookback_days` | 200 行、1 天，用于加载文件型长期与每日记忆 |
 | `skills_dir` | 模板为 `../skills`，由配置目录解析 |
 | `teams.enabled`、`max_members`、`default_members` | `true`、6、3 |

@@ -18,6 +18,7 @@ from ..config.workspace import require_outside_workspace, validate_workspace_run
 from ..config.writer import update_default_config, update_mcp_server_config, upsert_env_value
 from ..core.run_store import DurableRunError, RunStore
 from ..core.workspace import configured_workspace_identity
+from ..memory.db import normalize_mysql_database_url
 from ..memory.manager import MemoryManager
 from ..mcp.manager import MCPManager
 from ..sdk import Minibot
@@ -109,17 +110,14 @@ class AgentManager:
     async def update_config(self, patch: dict[str, Any]) -> None:
         """兼容旧的全局配置更新方式，将配置映射到默认 Bot 和全局技能目录。"""
         async with self._global_lock:
-            if "skills_dirs" in patch and patch["skills_dirs"] is not None:
-                self.skills_dirs = [str(Path(p).expanduser().resolve()) for p in patch["skills_dirs"]]
-
             requested_backend = patch.get("memory_backend")
             backend = (
                 str(requested_backend).strip().lower()
                 if requested_backend is not None
                 else self._base_config.memory.backend
             )
-            if backend not in {"sqlite", "postgres"}:
-                raise ValueError("memory_backend must be 'sqlite' or 'postgres'")
+            if backend not in {"sqlite", "postgres", "mysql"}:
+                raise ValueError("memory_backend must be 'sqlite', 'postgres', or 'mysql'")
 
             raw_memory_url = patch.get("memory_database_url_value", _STATE_UNSET)
             next_memory_url = self._base_config.memory.database_url
@@ -129,8 +127,10 @@ class AgentManager:
                 else:
                     next_memory_url = None
 
-            if backend == "postgres" and not next_memory_url:
-                raise ValueError("memory_database_url_value is required when memory_backend=postgres")
+            if backend != "sqlite" and not next_memory_url:
+                raise ValueError(f"memory_database_url_value is required when memory_backend={backend}")
+            if backend == "mysql" and next_memory_url:
+                normalize_mysql_database_url(next_memory_url)
 
             if requested_backend is not None:
                 update_default_config(
@@ -147,6 +147,9 @@ class AgentManager:
             if raw_memory_url is not _STATE_UNSET:
                 upsert_env_value(self._env_path, "MEMORY_DATABASE_URL", next_memory_url)
                 self._base_config.memory.database_url = next_memory_url
+
+            if "skills_dirs" in patch and patch["skills_dirs"] is not None:
+                self.skills_dirs = [str(Path(p).expanduser().resolve()) for p in patch["skills_dirs"]]
 
         default_patch: dict[str, Any] = {}
         if "base_url" in patch:

@@ -48,7 +48,7 @@ class MemoryNodeBundle:
 
 
 class MemoryRepository:
-    """基于 SQLite 或 PostgreSQL 的轻量结构化记忆仓库。"""
+    """基于 SQLite、PostgreSQL 或 MySQL 的结构化记忆仓库。"""
 
     def __init__(self, *, backend: str, database: MemoryDatabase) -> None:
         """绑定记忆数据库及其后端类型。"""

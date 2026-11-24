@@ -63,3 +63,7 @@ teams:
   wait_timeout_sec: 30
   quiet_teammates: true
   debug_teammate_output: false
+
+memory:
+  backend: mysql
+  database_url: mysql+pymysql://root:123456@127.0.0.1:3306/minibot
